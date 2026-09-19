@@ -1,0 +1,36 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`question specs > comment-matches-code snapshot 1`] = `
+{
+  "main": {
+    "criteria": {
+      "false": "The comment is accurate for what the body does, or is merely brief, vague, or incomplete about minor details. Examples: the comment says saves an order and the body validates then saves.",
+      "true": "The comment states a behavior, return value, or guarantee the code does not implement, or the code performs a write, network call, deletion, or mutation the comment does not mention. Examples: the comment says returns the profile and the body deletes; the comment says pure and the body writes a file.",
+    },
+    "instructions": "Does \`function.comment\` describe behavior that \`function.body\` does not have, or leave out a side effect that \`function.body\` has?",
+    "type": "noul",
+  },
+}
+`;
+
+exports[`question specs > helpful-error-message asks one noul per throw site keyed by site id 1`] = `
+{
+  "criteria": {
+    "false": "The message names the failing thing, the bad value, the expected condition, or the next step. Examples: Expected a number but received string; Order has no items; Missing env var DATABASE_URL.",
+    "true": "The message is a bare code, a generic phrase such as something went wrong, failed, or invalid input, or names nothing the reader could act on. Examples: Error 42; Unexpected error; Invalid.",
+  },
+  "instructions": "Would a developer reading the error message in \`function.throws.f0.t0.message\` in a log be unable to tell what went wrong or what to check next?",
+  "type": "noul",
+}
+`;
+
+exports[`question specs > name-matches-body has a bad=true noul and a verb choice with an other option 1`] = `
+{
+  "criteria": {
+    "false": "The name is a fair label for the body's main effect, even if it leaves out details such as helpers, logging, caching, or error handling. Examples: getUser that reads from a cache then the database; saveOrder that also validates before saving.",
+    "true": "The name describes an action or result the body does not perform, or the body's main effect is something the name hides. Examples: the name says get and the body deletes; the name says validate and the body saves; the name says fetchUser and the body returns orders.",
+  },
+  "instructions": "Does \`function.name\` promise a different action, object, or result than \`function.body\` performs?",
+  "type": "noul",
+}
+`;
