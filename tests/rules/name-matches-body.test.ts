@@ -1,6 +1,7 @@
-import { RuleTester } from "eslint";
+import { Linter, RuleTester } from "eslint";
 import tsParser from "@typescript-eslint/parser";
 import rule from "../../src/rules/name-matches-body.js";
+import { createJevRule } from "../../src/rules/createJevRule.js";
 
 const fixturePath = new URL("../fixtures/fake-answers-rules.json", import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1");
 process.env.JEV_FAKE_ANSWERS = fixturePath;
@@ -42,4 +43,68 @@ describe("strict mode", () => {
   });
   const strict = new RuleTester({ languageOptions: { parser: tsParser }, settings: { jev: { strict: true } } });
   strict.run("name-matches-body strict", rule, { valid: [], invalid: [{ code: "function listUsers() {}", errors: [{ messageId: "unavailable", line: 1, column: 1 }] }] });
+});
+
+const probeRule = createJevRule<Record<string, never>>({
+  name: "probe", type: "problem", description: "probe rule for cross-rule session tests",
+  schema: [{ type: "object", additionalProperties: true }], defaultOptions: [{}], messages: {},
+  select: () => true,
+  questions: () => ({ main: { type: "noul", instructions: "q" } }),
+  report: () => {},
+});
+
+const throwingRule = createJevRule<Record<string, never>>({
+  name: "throws", type: "problem", description: "rule whose report callback throws",
+  schema: [{ type: "object", additionalProperties: true }], defaultOptions: [{}], messages: {},
+  select: () => true,
+  questions: () => ({ main: { type: "noul", instructions: "q" } }),
+  report: () => { throw new Error("boom"); },
+});
+
+describe("session-level fatal/skipped reporting", () => {
+  describe("shared fatal error", () => {
+    beforeAll(() => {
+      process.env.JEV_FAKE_ERRORS = JSON.stringify([{ kind: "no_key", message: "TYPESAFE_API_KEY not set" }]);
+    });
+    afterAll(() => {
+      delete process.env.JEV_FAKE_ERRORS;
+    });
+
+    it("reports unavailable once per file even with two jev rules", () => {
+      const linter = new Linter();
+      const messages = linter.verify(
+        "function listUsers() { return db.users.findMany(); }",
+        {
+          files: ["**/*.ts"],
+          languageOptions: { parser: tsParser },
+          plugins: { jev: { rules: { "name-matches-body": rule, probe: probeRule } } },
+          settings: { jev: { strict: true } },
+          rules: { "jev/name-matches-body": "error", "jev/probe": "error" },
+        },
+        "file.ts",
+      );
+      const unavailable = messages.filter((m) => m.messageId === "unavailable");
+      expect(unavailable).toHaveLength(1);
+    });
+  });
+
+  it("a throwing rule callback becomes an unavailable diagnostic in strict mode, not an exception", () => {
+    const linter = new Linter();
+    expect(() => {
+      const messages = linter.verify(
+        "function whatever() { return 1; }",
+        {
+          files: ["**/*.ts"],
+          languageOptions: { parser: tsParser },
+          plugins: { jev: { rules: { throws: throwingRule } } },
+          settings: { jev: { strict: true } },
+          rules: { "jev/throws": "error" },
+        },
+        "file.ts",
+      );
+      const unavailable = messages.filter((m) => m.messageId === "unavailable");
+      expect(unavailable).toHaveLength(1);
+      expect(unavailable[0].message).toContain("boom");
+    }).not.toThrow();
+  });
 });

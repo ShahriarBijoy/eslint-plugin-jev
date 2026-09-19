@@ -9,6 +9,8 @@ import { evaluateSync } from "../bridge/evaluateSync.js";
 export class FileSession {
   readonly units: FunctionUnit[];
   readonly skipped: ExtractResult["skipped"];
+  fatalReported = false;
+  skippedReported = false;
   private questions = new Map<string, Record<string, Question>>();   // unitId -> `${ruleId}:${qid}` -> Question
   private memo: EvaluateResponse | undefined;
   constructor(private context: Rule.RuleContext, readonly settings: Settings) {
