@@ -51,6 +51,31 @@ to it is git-ignored.
 
 Never paste a key, or any output containing one, into an issue, a test fixture, or a commit.
 
+## Site
+
+`site/` is a static page: no build step, no framework, no runtime dependencies. It is served by
+GitHub Pages straight from `main` whenever a push touches `site/**` (see
+`.github/workflows/pages.yml`).
+
+To preview it locally, run a plain file server inside the directory:
+
+```bash
+cd site && python -m http.server
+```
+
+Opening `site/index.html` directly with a `file://` URL does not work — the demo fetches
+`replay.json`, and browsers block `fetch` against `file://` paths, so the page needs to be served
+over HTTP even locally.
+
+The demo never calls TypeSafe; it replays `site/replay.json`, a recording of real plugin output. To
+re-record it after changing the plugin, a rule, or an example file:
+
+```bash
+pnpm build && pnpm record:replay   # needs TYPESAFE_API_KEY in .env, same as pnpm smoke/bench
+```
+
+Commit the regenerated `site/replay.json` along with your change.
+
 ## Adding a rule
 
 A rule is three small pieces and a test. Take `src/rules/comment-matches-code.ts` as the template —
