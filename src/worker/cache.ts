@@ -36,7 +36,8 @@ export class JsonlCache {
   }
   private async flush(key: string): Promise<void> {
     await fs.mkdir(this.dir, { recursive: true });
-    const entry = this.index.get(key)!;
+    const entry = this.index.get(key);
+    if (!entry) return;
     const line = JSON.stringify({ key, answer: entry.answer, model: entry.model, ts: entry.ts } satisfies Line) + "\n";
     let size = 0;
     try { size = (await fs.stat(this.file)).size; } catch { /* new file */ }
