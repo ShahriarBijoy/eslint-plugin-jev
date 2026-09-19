@@ -2,7 +2,7 @@
 
 This is the initial seed run, not the full labeled set. Only
 `bench/labels/name-matches-body.jsonl` exists so far, with 10 hand-written
-cases (6 positives, 4 negatives). The other rules (`comment-matches-code`,
+cases (5 positives, 5 negatives). The other rules (`comment-matches-code`,
 `helpful-error-message`) have no label files yet. Rule default thresholds in
 `src/rules/*.ts` are **not** changed based on this seed run; that happens once
 full ~50-case label sets exist per rule (see `bench/README.md`).

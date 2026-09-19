@@ -1,6 +1,9 @@
 import { ESLint } from "eslint";
 import tsParser from "@typescript-eslint/parser";
-import plugin from "../dist/index.js";
+
+let plugin: typeof import("../dist/index.js").default;
+try { plugin = (await import("../dist/index.js")).default; }
+catch { console.error("dist/ not found. Run `pnpm build` first."); process.exit(1); }
 
 if (!process.env.TYPESAFE_API_KEY) { console.error("Set TYPESAFE_API_KEY"); process.exit(1); }
 delete process.env.JEV_FAKE_ANSWERS;
