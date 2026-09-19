@@ -1,20 +1,9 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createOpenRouterClient, openRouterModelId } from "../../src/worker/openrouter.js";
+import { createOpenRouterClient } from "../../src/worker/openrouter.js";
 import { evaluate } from "../../src/worker/evaluate.js";
 import type { EvaluateRequest } from "../../src/types.js";
-
-describe("openRouterModelId", () => {
-  it("prefixes a bare model id with typesafe/", () => {
-    expect(openRouterModelId("jev-latest")).toBe("typesafe/jev-latest");
-    expect(openRouterModelId("jev-1.13")).toBe("typesafe/jev-1.13");
-  });
-  it("leaves an already-namespaced id untouched", () => {
-    expect(openRouterModelId("typesafe/jev-latest")).toBe("typesafe/jev-latest");
-    expect(openRouterModelId("other/jev-latest")).toBe("other/jev-latest");
-  });
-});
 
 describe("createOpenRouterClient", () => {
   afterEach(() => { vi.unstubAllGlobals(); });
@@ -29,7 +18,7 @@ describe("createOpenRouterClient", () => {
       expect(headers["Content-Type"]).toBe("application/json");
       expect(headers["HTTP-Referer"]).toBe("https://github.com/ShahriarBijoy/eslint-plugin-jev");
       expect(headers["X-Title"]).toBe("eslint-plugin-jev");
-      expect(JSON.parse(init.body as string)).toEqual({ model: "typesafe/jev-latest", state: { a: 1 }, questions: { main: { type: "noul", instructions: "q" } } });
+      expect(JSON.parse(init.body as string)).toEqual({ model: "jev-latest", state: { a: 1 }, questions: { main: { type: "noul", instructions: "q" } } });
       return new Response(JSON.stringify(body), { status: 200 });
     });
     vi.stubGlobal("fetch", fetchMock);
@@ -37,6 +26,18 @@ describe("createOpenRouterClient", () => {
     const controller = new AbortController();
     const out = await client.systemOne({ state: { a: 1 }, questions: { main: { type: "noul", instructions: "q" } }, model: "jev-latest" }, { signal: controller.signal });
     expect(out).toEqual(body);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each(["jev-latest", "typesafe/jev-1.13"])("sends the body's model exactly as passed by the caller (%s)", async (model) => {
+    const fetchMock = vi.fn(async (_url: string, init: RequestInit) => {
+      expect(JSON.parse(init.body as string).model).toBe(model);
+      return new Response(JSON.stringify({ model, answers: {}, usage: { input_tokens: 0, output_tokens: 0 } }), { status: 200 });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    const client = createOpenRouterClient("k", 8000);
+    const controller = new AbortController();
+    await client.systemOne({ state: {}, questions: {}, model }, { signal: controller.signal });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 

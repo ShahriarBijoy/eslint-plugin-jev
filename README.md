@@ -198,8 +198,9 @@ TypeScript users can type the block with `JevSettings` from the package.
 
 `provider: "auto"` uses TypeSafe when `TYPESAFE_API_KEY` is set and falls back to OpenRouter
 otherwise; `"typesafe"` and `"openrouter"` pin one backend regardless of which keys are present.
-Through OpenRouter the model id is namespaced automatically, so `model` stays `jev-latest` either
-way — OpenRouter's Decisions endpoint is currently in beta. The model's listed per-token price is
+Through OpenRouter the model id is sent unchanged, so use `jev-latest` or an OpenRouter id such as
+`typesafe/jev-1.13`; TypeSafe's three-part ids such as `jev-1.13.0` are TypeSafe-only. OpenRouter's
+Decisions endpoint is currently in beta. The model's listed per-token price is
 the same through either route, and OpenRouter's own credit fees are separate. Through TypeSafe that
 price is $0.042 per million input tokens, output free.
 

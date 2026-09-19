@@ -17,3 +17,6 @@ from the other backend.
 The exported `Settings` type gained a required `provider` field to reflect this new option. Keep
 using `JevSettings` (the partial version of `Settings`) to type a `settings.jev` block in your own
 ESLint config, since every field there remains optional.
+
+The configured model id is passed to OpenRouter unchanged; use `jev-latest` or an OpenRouter id
+such as `typesafe/jev-1.13`, not a TypeSafe-only three-part id such as `jev-1.13.0`.

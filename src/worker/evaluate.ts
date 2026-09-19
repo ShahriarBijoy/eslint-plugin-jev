@@ -98,7 +98,7 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
         // that worker's controller.abort() (or a race that lost) — leave the unit unanswered
         // rather than reporting a second, misleading per-unit error.
         if (fatalPushed) continue;
-        const { fatal, ...info } = classify(err, unit.name, req.timeoutMs, backend);
+        const { fatal, ...info } = classify(err, unit.name, req.timeoutMs, backend, req.model);
         if (fatal) {
           fatalPushed = true;
           controller.abort();
@@ -132,7 +132,7 @@ function resolveBackend(provider: Provider, tsKey: string | undefined, orKey: st
   return { backend: "typesafe", apiKey: undefined };
 }
 
-function classify(err: unknown, name: string, timeoutMs: number, provider: "typesafe" | "openrouter"): Omit<EvaluateError, "unitId"> & { fatal?: boolean } {
+function classify(err: unknown, name: string, timeoutMs: number, provider: "typesafe" | "openrouter", model: string): Omit<EvaluateError, "unitId"> & { fatal?: boolean } {
   const e = err as { name?: string; status?: number; message?: string; body?: unknown };
   const msg = e?.message ?? String(err);
   if (e?.name === "AbortError" || e?.name === "APIUserAbortError") return { kind: "timeout", message: `${name}: file deadline of ${timeoutMs} ms reached.` };
@@ -154,6 +154,13 @@ function classify(err: unknown, name: string, timeoutMs: number, provider: "type
     return { kind: "rate_limit", message: `${name}: ${label} ${suffix}` };
   }
   if (e?.status === 400 && /max_tokens_exceeded|too large|token/i.test(JSON.stringify(e.body ?? msg))) return { kind: "too_large", message: `${name}: request exceeds the model's token limit.` };
+  // OpenRouter returns a plain 400 for a model id it doesn't recognize (e.g. "typesafe/jev-latest",
+  // which OpenRouter has never namespaced that way). Every unit uses the same configured model, so
+  // this fails identically for the rest of the file; treat it as fatal like the other unusable-
+  // backend cases above rather than reporting it per unit.
+  if (provider === "openrouter" && e?.status === 400 && /does not exist/i.test(JSON.stringify(e.body ?? msg))) {
+    return { kind: "api", message: `OpenRouter has no model "${model}". Use jev-latest, or an OpenRouter id such as typesafe/jev-1.13.`, fatal: true };
+  }
   if (typeof e?.status === "number") return { kind: "api", message: `${name}: ${label} API error ${e.status}: ${msg}` };
   // Transport failures (DNS/connection refused/etc.) and anything else unclassified mean the API
   // is unreachable for every unit in the file, not just this one, so they are also fatal.

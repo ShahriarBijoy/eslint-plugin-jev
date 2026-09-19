@@ -89,6 +89,27 @@ describe("evaluate", () => {
     expect(res.errors).toEqual([{ kind: "api", message: "OpenRouter account is out of credits (HTTP 402). Add credits at https://openrouter.ai/credits." }]);
     expect(res.errors[0]).not.toHaveProperty("unitId");
   });
+  it("treats an OpenRouter 400 naming an unknown model as a fatal file-level error naming the model and the fix", async () => {
+    const calls: unknown[] = [];
+    const client: JevClient = { async systemOne(input) { calls.push(input); throw Object.assign(new Error("Model typesafe/jev-latest does not exist"), { status: 400, body: { error: { message: "Model typesafe/jev-latest does not exist", code: 400 } } }); } };
+    const res = await evaluate(req({ provider: "openrouter", concurrency: 1, model: "typesafe/jev-latest" }), { client, apiKey: undefined, openrouterApiKey: "or-key" });
+    expect(calls).toHaveLength(1);
+    expect(res.errors).toEqual([{ kind: "api", message: `OpenRouter has no model "typesafe/jev-latest". Use jev-latest, or an OpenRouter id such as typesafe/jev-1.13.` }]);
+    expect(res.errors[0]).not.toHaveProperty("unitId");
+  });
+
+  it("still classifies an OpenRouter 400 about exceeding the token limit as too_large, not an unknown-model error, per unit (not fatal)", async () => {
+    const client: JevClient = { async systemOne(input) {
+      if ((input.state as { function: { name: string } }).function.name === "getUser") {
+        throw Object.assign(new Error("max_tokens_exceeded"), { status: 400, body: { error: { message: "max_tokens_exceeded", code: 400 } } });
+      }
+      return fakeClient().systemOne(input, { signal: new AbortController().signal });
+    } };
+    const res = await evaluate(req({ provider: "openrouter" }), { client, apiKey: undefined, openrouterApiKey: "or-key" });
+    expect(res.errors).toEqual([{ unitId: "f0", kind: "too_large", message: expect.any(String) }]);
+    expect(res.answers.f1["name-matches-body:main"]).toEqual({ noul: 0.9 });
+  });
+
   it("aborts on the per-file timeout and reports timeout for unfinished units", async () => {
     const client: JevClient = { systemOne: (_i, { signal }) => new Promise((_, rej) => signal.addEventListener("abort", () => rej(Object.assign(new Error("aborted"), { name: "AbortError" })))) };
     const res = await evaluate(req({ timeoutMs: 50 }), { client, apiKey: "k" });
