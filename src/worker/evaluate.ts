@@ -17,13 +17,21 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
   const cache = deps.cache ?? new JsonlCache(resolve(req.cwd, req.cacheDir));
   if (!deps.cache) await cache.load();
 
+  // The cache is namespaced by the backend that actually answers ("typesafe" or "openrouter"),
+  // never by the raw "auto" setting, so "auto" and an explicit "typesafe" share answers and an
+  // OpenRouter answer is never served to TypeSafe. That identity has to be known before the cache
+  // pass, so key resolution happens up front now rather than only once a miss demands a network call.
+  const tsKey = "apiKey" in deps ? deps.apiKey : resolveApiKey(req.cwd);
+  const orKey = "openrouterApiKey" in deps ? deps.openrouterApiKey : resolveOpenRouterKey(req.cwd);
+  const { backend, apiKey } = resolveBackend(req.provider, tsKey, orKey);
+
   // 1. Serve everything possible from cache, collect misses per unit.
   const misses: EvaluateUnit[] = [];
   for (const unit of req.units) {
     const ua: UnitAnswers = {};
     const missing: Record<string, Question> = {};
     for (const [qid, q] of Object.entries(unit.questions)) {
-      const hit = cache.get(cacheKey(req.provider, req.model, q, unit.stateText));
+      const hit = cache.get(cacheKey(backend, req.model, q, unit.stateText));
       if (hit) { ua[qid] = hit; res.cached++; } else missing[qid] = q;
     }
     res.answers[unit.id] = ua;
@@ -31,30 +39,17 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
   }
   if (!misses.length) return res;
 
-  // Only look up the key once we know a network call is actually needed: a fully cached run
-  // never touches the environment, .env, or the global config file.
   const NO_KEY_HINT = "(env, .env, or ~/.config/jev/config.json). Jev rules are skipped.";
-  let apiKey: string | undefined;
-  let usingProvider: "typesafe" | "openrouter";
-  if (req.provider === "typesafe") {
-    apiKey = "apiKey" in deps ? deps.apiKey : resolveApiKey(req.cwd);
-    usingProvider = "typesafe";
-    if (!apiKey) { res.errors.push({ kind: "no_key", message: `eslint-plugin-jev: TYPESAFE_API_KEY not set ${NO_KEY_HINT}` }); return res; }
-  } else if (req.provider === "openrouter") {
-    apiKey = "openrouterApiKey" in deps ? deps.openrouterApiKey : resolveOpenRouterKey(req.cwd);
-    usingProvider = "openrouter";
-    if (!apiKey) { res.errors.push({ kind: "no_key", message: `eslint-plugin-jev: OPENROUTER_API_KEY not set ${NO_KEY_HINT}` }); return res; }
-  } else {
-    const tsKey = "apiKey" in deps ? deps.apiKey : resolveApiKey(req.cwd);
-    if (tsKey) {
-      apiKey = tsKey; usingProvider = "typesafe";
-    } else {
-      const orKey = "openrouterApiKey" in deps ? deps.openrouterApiKey : resolveOpenRouterKey(req.cwd);
-      if (!orKey) { res.errors.push({ kind: "no_key", message: `eslint-plugin-jev: neither TYPESAFE_API_KEY nor OPENROUTER_API_KEY is set ${NO_KEY_HINT}` }); return res; }
-      apiKey = orKey; usingProvider = "openrouter";
-    }
+  if (!apiKey) {
+    const message = req.provider === "openrouter"
+      ? `eslint-plugin-jev: OPENROUTER_API_KEY not set ${NO_KEY_HINT}`
+      : req.provider === "typesafe"
+        ? `eslint-plugin-jev: TYPESAFE_API_KEY not set ${NO_KEY_HINT}`
+        : `eslint-plugin-jev: neither TYPESAFE_API_KEY nor OPENROUTER_API_KEY is set ${NO_KEY_HINT}`;
+    res.errors.push({ kind: "no_key", message });
+    return res;
   }
-  const client: JevClient = deps.client ?? (usingProvider === "typesafe"
+  const client: JevClient = deps.client ?? (backend === "typesafe"
     ? (new TypeSafeClient({ apiKey, defaultModel: req.model, timeout: Math.max(1000, req.timeoutMs), logLevel: "off" }) as unknown as JevClient)
     : createOpenRouterClient(apiKey, req.timeoutMs));
 
@@ -84,14 +79,14 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
           const { type: _t, ...answer } = raw;
           res.answers[unit.id][qid] = answer;
           res.fetched++;
-          await cache.set(cacheKey(req.provider, req.model, unit.questions[qid], unit.stateText), answer, out.model);
+          await cache.set(cacheKey(backend, req.model, unit.questions[qid], unit.stateText), answer, out.model);
         }
       } catch (err) {
         // If another worker already declared the fatal, this failure is just a side effect of
         // that worker's controller.abort() (or a race that lost) — leave the unit unanswered
         // rather than reporting a second, misleading per-unit error.
         if (fatalPushed) continue;
-        const { fatal, ...info } = classify(err, unit.name, req.timeoutMs, usingProvider);
+        const { fatal, ...info } = classify(err, unit.name, req.timeoutMs, backend);
         if (fatal) {
           fatalPushed = true;
           controller.abort();
@@ -108,6 +103,21 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
     clearTimeout(timer);
   }
   return res;
+}
+
+/**
+ * Picks the backend that will actually serve the request, and the key that goes with it.
+ * "auto" tries the TypeSafe key first, then the OpenRouter key, and falls back to a keyless
+ * "typesafe" backend (the caller reports no_key only if that backend then has cache misses).
+ * For an explicit provider, the backend is that value and the key is whichever one matches
+ * (possibly undefined).
+ */
+function resolveBackend(provider: Provider, tsKey: string | undefined, orKey: string | undefined): { backend: "typesafe" | "openrouter"; apiKey?: string } {
+  if (provider === "openrouter") return { backend: "openrouter", apiKey: orKey };
+  if (provider === "typesafe") return { backend: "typesafe", apiKey: tsKey };
+  if (tsKey) return { backend: "typesafe", apiKey: tsKey };
+  if (orKey) return { backend: "openrouter", apiKey: orKey };
+  return { backend: "typesafe", apiKey: undefined };
 }
 
 function classify(err: unknown, name: string, timeoutMs: number, provider: "typesafe" | "openrouter"): Omit<EvaluateError, "unitId"> & { fatal?: boolean } {

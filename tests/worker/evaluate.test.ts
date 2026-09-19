@@ -158,12 +158,35 @@ describe("evaluate", () => {
     it("does not serve cache entries written under one provider to the other", async () => {
       const r = req();
       const cache = new JsonlCache(r.cacheDir); await cache.load();
-      await evaluate({ ...r, provider: "typesafe" }, { client: fakeClient(), apiKey: "k", cache });
+      await evaluate({ ...r, provider: "typesafe" }, { client: fakeClient(), apiKey: "k", openrouterApiKey: undefined, cache });
       const calls: unknown[] = [];
-      const res = await evaluate({ ...r, provider: "openrouter" }, { client: fakeClient(calls), openrouterApiKey: "k", cache });
+      const res = await evaluate({ ...r, provider: "openrouter" }, { client: fakeClient(calls), apiKey: undefined, openrouterApiKey: "k", cache });
       expect(calls.length).toBeGreaterThan(0);
       expect(res.cached).toBe(0);
       expect(res.fetched).toBe(3);
+    });
+
+    it("auto and typesafe share a cache namespace", async () => {
+      const r = req();
+      const cache = new JsonlCache(r.cacheDir); await cache.load();
+      await evaluate({ ...r, provider: "auto" }, { client: fakeClient(), apiKey: "k", openrouterApiKey: undefined, cache });
+      const calls: unknown[] = [];
+      const res = await evaluate({ ...r, provider: "typesafe" }, { client: fakeClient(calls), apiKey: "k", openrouterApiKey: undefined, cache });
+      expect(calls).toHaveLength(0);
+      expect(res.cached).toBe(3);
+      expect(res.fetched).toBe(0);
+    });
+
+    it("a fully cached run with no key returns cached answers and no error", async () => {
+      const r = req();
+      const cache = new JsonlCache(r.cacheDir); await cache.load();
+      await evaluate(r, { client: fakeClient(), apiKey: "k", openrouterApiKey: undefined, cache });
+      const calls: unknown[] = [];
+      const res = await evaluate(r, { client: fakeClient(calls), apiKey: undefined, openrouterApiKey: undefined, cache });
+      expect(calls).toHaveLength(0);
+      expect(res.errors).toEqual([]);
+      expect(res.cached).toBe(3);
+      expect(res.answers.f0["name-matches-body:main"]).toEqual({ noul: 0.9 });
     });
 
     it("integration: a real OpenRouter 401 (via stubbed fetch) becomes one fatal error naming OPENROUTER_API_KEY", async () => {
