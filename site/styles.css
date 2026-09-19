@@ -19,7 +19,7 @@
   --accent-hover:  hsl(224 72% 38%);
   --accent-ink:    hsl(0 0% 100%);
   --accent-soft:   hsl(224 80% 96%);
-  --warn:          hsl(32 88% 38%);
+  --warn:          hsl(32 90% 33%);   /* 5.3:1 on --surface, 5.1:1 on --bg */
   --warn-line:     hsl(36 94% 50%);
   --warn-soft:     hsl(40 92% 94%);
   --ok:            hsl(152 58% 29%);
@@ -166,7 +166,13 @@ code, pre, kbd { font-family: var(--mono); font-size: 0.875em; }
   white-space: nowrap;
 }
 .wordmark:hover { text-decoration: none; color: var(--accent); }
-.nav-links { display: flex; gap: 0.25rem; overflow-x: auto; scrollbar-width: none; }
+.nav-links {
+  display: flex; gap: 0.25rem;
+  flex: 0 1 auto; min-width: 0;   /* shrink and scroll instead of overflowing the bar */
+  overflow-x: auto; overflow-y: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
 .nav-links::-webkit-scrollbar { display: none; }
 .nav-links a {
   /* vibrancy: higher contrast + a touch of tracking over a translucent surface */
@@ -181,9 +187,15 @@ code, pre, kbd { font-family: var(--mono); font-size: 0.875em; }
 }
 .nav-links a:hover { color: var(--text); background: color-mix(in srgb, var(--text) 7%, transparent); text-decoration: none; }
 
-@media (max-width: 560px) {
+@media (max-width: 640px) {
   .nav-links a { padding: 0.4rem 0.4rem; }
   .wordmark { font-size: 0.8125rem; }
+  /* the row scrolls on phones: fade its right edge so that reads as more-to-come.
+     Dropped while a link inside has focus, so a focus ring is never half-faded. */
+  .nav-links:not(:focus-within) {
+    -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+    mask-image: linear-gradient(to right, #000 calc(100% - 20px), transparent);
+  }
 }
 
 /* ------------------------------------------------------------------ hero */

@@ -105,6 +105,20 @@
   }
   function later(fn, ms) { timers.push(window.setTimeout(fn, ms)); }
 
+  function startRun() {
+    busy = true;
+    runBtn.disabled = true;
+    outEl.setAttribute("aria-busy", "true");
+  }
+
+  /* Always paired with startRun, including when a run is abandoned mid-flight
+     because the user switched tabs or toggled Fix it during "linting…". */
+  function finishRun() {
+    busy = false;
+    if (data) runBtn.disabled = false;
+    outEl.removeAttribute("aria-busy");
+  }
+
   /* ------------------------------------------------------------------- tabs */
 
   function buildTabs() {
@@ -276,6 +290,7 @@
 
   function resetOutput() {
     clearTimers();
+    finishRun();
     hideCard();
     outEl.replaceChildren(hint("Press Run eslint."));
     runMeta.textContent = "";
@@ -356,31 +371,24 @@
     var v = currentVariant();
     var key = current().id + ":" + variant;
     var warm = alreadyRun[key] === true;
-    alreadyRun[key] = true;
 
-    busy = true;
-    runBtn.disabled = true;
-    outEl.setAttribute("aria-busy", "true");
     clearTimers();
     hideCard();
-
-    function done() {
-      busy = false;
-      runBtn.disabled = false;
-      outEl.removeAttribute("aria-busy");
-    }
+    startRun();
 
     if (warm) {
       paint(v, true);
-      done();
+      finishRun();
       return;
     }
 
     outEl.replaceChildren(hint("linting…"));
     runMeta.textContent = "";
     later(function () {
+      /* only a run that finished counts as cached, so an interrupted one stays cold */
+      alreadyRun[key] = true;
       paint(v, false);
-      done();
+      finishRun();
     }, Math.min(v.coldMs, 600));
   }
 
