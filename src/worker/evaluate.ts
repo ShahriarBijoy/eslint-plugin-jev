@@ -38,8 +38,13 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), req.timeoutMs);
   const queue = [...misses];
+  // Set the moment any worker classifies an error as file-level fatal (invalid key, transport
+  // unreachable). Guards against pushing the fatal more than once when several workers hit it
+  // concurrently, and tells every worker to stop pulling from the shared queue.
+  let fatalPushed = false;
   const worker = async (): Promise<void> => {
     for (let unit = queue.shift(); unit; unit = queue.shift()) {
+      if (fatalPushed) break;
       const questionTokens = Math.ceil(JSON.stringify(unit.questions).length / 4);
       if (unit.estimatedTokens > req.maxFunctionTokens || unit.estimatedTokens + questionTokens > REQUEST_TOKEN_BUDGET) {
         res.errors.push({ unitId: unit.id, kind: "too_large", message: `${unit.name}: ~${unit.estimatedTokens} tokens exceeds the budget; raise settings.jev.maxFunctionTokens or split the function.` });
@@ -58,7 +63,18 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
           await cache.set(cacheKey(req.model, unit.questions[qid], unit.stateText), answer, out.model);
         }
       } catch (err) {
-        res.errors.push({ unitId: unit.id, ...classify(err, unit.name, req.timeoutMs) });
+        // If another worker already declared the fatal, this failure is just a side effect of
+        // that worker's controller.abort() (or a race that lost) — leave the unit unanswered
+        // rather than reporting a second, misleading per-unit error.
+        if (fatalPushed) continue;
+        const { fatal, ...info } = classify(err, unit.name, req.timeoutMs);
+        if (fatal) {
+          fatalPushed = true;
+          controller.abort();
+          res.errors.push(info);
+        } else {
+          res.errors.push({ unitId: unit.id, ...info });
+        }
       }
     }
   };
@@ -67,13 +83,18 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
   return res;
 }
 
-function classify(err: unknown, name: string, timeoutMs: number): Omit<EvaluateError, "unitId"> {
+function classify(err: unknown, name: string, timeoutMs: number): Omit<EvaluateError, "unitId"> & { fatal?: boolean } {
   const e = err as { name?: string; status?: number; message?: string; body?: unknown };
   const msg = e?.message ?? String(err);
   if (e?.name === "AbortError" || e?.name === "APIUserAbortError") return { kind: "timeout", message: `${name}: file deadline of ${timeoutMs} ms reached.` };
+  // 401/403 mean the key itself is bad: no retry or per-unit granularity will help, so this is
+  // fatal for the whole file. Never echo the key; only the HTTP status is user data here.
+  if (e?.status === 401 || e?.status === 403) return { kind: "api", message: `TypeSafe rejected the API key (HTTP ${e.status}). Check TYPESAFE_API_KEY.`, fatal: true };
   if (e?.status === 429) return { kind: "rate_limit", message: `${name}: TypeSafe rate limit (429) after retries.` };
   if (e?.status === 400 && /max_tokens_exceeded|too large|token/i.test(JSON.stringify(e.body ?? msg))) return { kind: "too_large", message: `${name}: request exceeds the model's token limit.` };
   if (typeof e?.status === "number") return { kind: "api", message: `${name}: TypeSafe API error ${e.status}: ${msg}` };
-  if (e?.name === "APITimeoutError" || e?.name === "APIConnectionError") return { kind: "transport", message: `${name}: could not reach api.typesafe.ai (${msg}).` };
-  return { kind: "transport", message: `${name}: ${msg}` };
+  // Transport failures (DNS/connection refused/etc.) mean the API is unreachable for every unit
+  // in the file, not just this one, so they are also fatal.
+  if (e?.name === "APITimeoutError" || e?.name === "APIConnectionError") return { kind: "transport", message: `could not reach api.typesafe.ai (${msg}).`, fatal: true };
+  return { kind: "transport", message: `could not reach api.typesafe.ai (${msg}).`, fatal: true };
 }

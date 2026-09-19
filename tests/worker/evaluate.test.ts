@@ -78,4 +78,26 @@ describe("evaluate", () => {
     const res = await evaluate(req({ timeoutMs: 50 }), { client, apiKey: "k" });
     expect(res.errors.map((e) => e.kind)).toEqual(["timeout", "timeout"]);
   });
+  it("reports an invalid key once as a file-level error and stops", async () => {
+    const calls: unknown[] = [];
+    const client: JevClient = { async systemOne(input) { calls.push(input); throw Object.assign(new Error("Unauthorized"), { status: 401 }); } };
+    const r = req({ concurrency: 1 });
+    r.units.push({ id: "f2", name: "thirdUnit", state: { function: { name: "thirdUnit" } }, stateText: '{"function":{"name":"thirdUnit"}}', estimatedTokens: 10, questions: { "name-matches-body:main": { type: "noul", instructions: "q" } } });
+    const res = await evaluate(r, { client, apiKey: "k" });
+    expect(calls).toHaveLength(1);
+    expect(res.errors).toEqual([{ kind: "api", message: expect.stringContaining("401") }]);
+    expect(res.errors[0]).not.toHaveProperty("unitId");
+    expect(res.errors[0].message).not.toContain("k=");
+    expect(res.errors[0].message).toBe("TypeSafe rejected the API key (HTTP 401). Check TYPESAFE_API_KEY.");
+  });
+  it("reports a transport failure once as a file-level error", async () => {
+    const calls: unknown[] = [];
+    const client: JevClient = { async systemOne(input) { calls.push(input); throw Object.assign(new Error("ECONNREFUSED"), { name: "APIConnectionError" }); } };
+    const r = req({ concurrency: 1 });
+    r.units.push({ id: "f2", name: "thirdUnit", state: { function: { name: "thirdUnit" } }, stateText: '{"function":{"name":"thirdUnit"}}', estimatedTokens: 10, questions: { "name-matches-body:main": { type: "noul", instructions: "q" } } });
+    const res = await evaluate(r, { client, apiKey: "k" });
+    expect(calls).toHaveLength(1);
+    expect(res.errors).toEqual([{ kind: "transport", message: expect.stringContaining("ECONNREFUSED") }]);
+    expect(res.errors[0]).not.toHaveProperty("unitId");
+  });
 });
