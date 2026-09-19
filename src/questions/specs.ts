@@ -56,7 +56,7 @@ export function checkQuestions(check: CheckDef, unit: FunctionUnit): Record<stri
     [check.id]: { type: "noul", instructions: `${check.question.trim()} Judge only \`function\` in the state.`, ...(check.criteria ? { criteria: check.criteria } : {}) },
   };
   if (check.locate !== false) {
-    out[`${check.id}:line`] = { type: "choice", instructions: "Which line of `function.body` most directly causes the issue described in the previous question? Pick none if no single line does.", criteria: lineOptions(unit) };
+    out[`${check.id}:line`] = { type: "choice", instructions: `Which line of \`function.body\` most directly causes the issue asked about here: "${check.question.trim()}"? Pick none if no single line does.`, criteria: lineOptions(unit) };
   }
   return out;
 }

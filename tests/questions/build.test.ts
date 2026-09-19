@@ -32,6 +32,8 @@ describe("question specs", () => {
     expect(Object.keys(q)).toEqual(["no-secret-logging", "no-secret-logging:line"]);
     expect((q["no-secret-logging"] as { instructions: string }).instructions).toBe("Does this function log a secret? Judge only `function` in the state.");
     expect((q["no-secret-logging:line"] as { criteria: object }).criteria).toEqual({ L001: null, L002: null, none: "No single line" });
+    expect((q["no-secret-logging:line"] as { instructions: string }).instructions).toContain("Does this function log a secret?");
+    expect((q["no-secret-logging:line"] as { instructions: string }).instructions).not.toContain("previous question");
   });
   it("check without locate omits the line choice and passes criteria through", () => {
     const q = checkQuestions({ id: "x", question: "Q?", locate: false, criteria: { true: "bad", false: "fine" } }, unit);
@@ -45,5 +47,22 @@ describe("state", () => {
     expect(unitState(unit)).toEqual({ function: { name: "getUser", signature: unit.signature, comment: unit.comment, body: unit.body, throws: { "f0.t0": { message: "Error 42", line: "L002" } } } });
     expect(stateText(unitState(unit))).toBe(JSON.stringify(unitState(unit)));
     expect(lineOptions(unit)).toEqual({ L001: null, L002: null, none: "No single line" });
+  });
+
+  it("handles edge cases: no throws, no comment, no criteria", () => {
+    // (a) unit with throws: [] has no throws key in unitState and helpfulErrorMessageQuestions returns {}
+    const unitNoThrows: FunctionUnit = { ...unit, throws: [] };
+    const stateNoThrows = unitState(unitNoThrows);
+    expect((stateNoThrows.function as Record<string, unknown>)).not.toHaveProperty("throws");
+    expect(helpfulErrorMessageQuestions(unitNoThrows)).toEqual({});
+
+    // (b) unit with comment: undefined has no comment key in unitState
+    const unitNoComment: FunctionUnit = { ...unit, comment: undefined };
+    const stateNoComment = unitState(unitNoComment);
+    expect((stateNoComment.function as Record<string, unknown>)).not.toHaveProperty("comment");
+
+    // (c) checkQuestions with no criteria has no criteria key in result
+    const qNoCriteria = checkQuestions({ id: "x", question: "Is this bad?" }, unit);
+    expect((qNoCriteria.x as Record<string, unknown>)).not.toHaveProperty("criteria");
   });
 });
