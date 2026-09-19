@@ -1,0 +1,6 @@
+{
+  "getUser":   { "name-matches-body:main": { "noul": 0.94 }, "name-matches-body:verb": { "choice": "delete", "probabilities": { "get": 0.05, "delete": 0.95 }, "confidence": 0.9 } },
+  "listUsers": { "name-matches-body:main": { "noul": 0.12 }, "name-matches-body:verb": { "choice": "find", "probabilities": { "find": 0.8 }, "confidence": 0.7 } },
+  "maybeBad":  { "name-matches-body:main": { "noul": 0.7 },  "name-matches-body:verb": { "choice": "other", "probabilities": { "other": 0.4 }, "confidence": 0.2 } },
+  "useThing":  { "name-matches-body:main": { "noul": 0.99 }, "name-matches-body:verb": { "choice": "delete", "probabilities": { "delete": 0.9 }, "confidence": 0.9 } }
+}
