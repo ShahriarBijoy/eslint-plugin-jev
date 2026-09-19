@@ -2,6 +2,8 @@
 
 **Lint for meaning. ESLint rules that are plain-English questions, judged in ~100 ms by TypeSafe's Jev.**
 
+Live demo: https://shahriarbijoy.github.io/eslint-plugin-jev/
+
 <!-- ![demo](docs/demo.gif) — uncomment once docs/demo.gif is recorded -->
 
 Prettier fixes the shape of your code. ESLint matches it against known bad patterns. Neither one
@@ -224,6 +226,37 @@ If you keep your key somewhere else, hand it to the server directly:
 
 With no key found anywhere, the Jev rules produce no diagnostics at all. Your editor behaves
 exactly as it did before you installed the plugin.
+
+## Set up with an AI agent
+
+If you work with a coding agent, hand it the prompt below instead of doing the install by hand. It
+detects your package manager, edits the ESLint config in place, keeps your key out of git, and runs
+the linter once so you see real output.
+
+```
+Set up eslint-plugin-jev in this repository.
+
+1. Detect the package manager from the lockfile: pnpm-lock.yaml means pnpm,
+   yarn.lock means yarn, package-lock.json means npm. Default to npm.
+2. Install eslint-plugin-jev as a dev dependency. If the repository contains any
+   .ts files, install @typescript-eslint/parser as a dev dependency too.
+3. If eslint.config.js, eslint.config.mjs or eslint.config.ts exists, add
+   `import jev from "eslint-plugin-jev";` at the top and spread
+   `...jev.configs.recommended` after the existing entries. If none exists,
+   create eslint.config.js and put the TypeScript parser block first:
+   { files: ["**/*.ts"], languageOptions: { parser: tsParser } }
+4. If I gave you a key, append TYPESAFE_API_KEY=<key> to .env. If I did not,
+   add the line TYPESAFE_API_KEY= to .env.example instead and tell me to get a
+   key from https://console.typesafe.ai.
+5. Make sure .env is listed in .gitignore. Add it if it is missing.
+6. Run `npx eslint <one source file>` and report the warnings verbatim.
+7. Never commit .env. Never print the key.
+
+Report what you changed in five lines.
+```
+
+The same text lives in [`docs/agent-setup.md`](docs/agent-setup.md), and the
+[site](https://shahriarbijoy.github.io/eslint-plugin-jev/#agent) has a copy-paste button for it.
 
 ## How it works
 
