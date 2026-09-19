@@ -27,4 +27,17 @@ describe("resolveSettings", () => {
   it("allows empty ignoreNames array from user", () => {
     expect(resolveSettings({ ignoreNames: [] }).ignoreNames).toEqual([]);
   });
+  it("defaults provider to auto", () => {
+    expect(resolveSettings(undefined).provider).toBe("auto");
+    expect(resolveSettings({}).provider).toBe("auto");
+  });
+  it("accepts a valid provider literal", () => {
+    expect(resolveSettings({ provider: "typesafe" }).provider).toBe("typesafe");
+    expect(resolveSettings({ provider: "openrouter" }).provider).toBe("openrouter");
+    expect(resolveSettings({ provider: "auto" }).provider).toBe("auto");
+  });
+  it("falls back to auto for an invalid provider value", () => {
+    expect(resolveSettings({ provider: "bogus" }).provider).toBe("auto");
+    expect(resolveSettings({ provider: 42 }).provider).toBe("auto");
+  });
 });

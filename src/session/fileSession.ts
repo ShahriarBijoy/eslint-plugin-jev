@@ -27,6 +27,7 @@ export class FileSession {
     const req: EvaluateRequest = {
       filename: this.context.filename, cwd: this.context.cwd, model: this.settings.model, timeoutMs: this.settings.timeoutMs,
       concurrency: this.settings.concurrency, cacheDir: this.settings.cacheDir, maxFunctionTokens: this.settings.maxFunctionTokens,
+      provider: this.settings.provider,
       units: this.units.filter((u) => this.questions.has(u.id)).map((u) => { const state = unitState(u); return { id: u.id, name: u.name, state, stateText: stateText(state), questions: this.questions.get(u.id)!, estimatedTokens: u.estimatedTokens }; }),
     };
     this.memo = req.units.length ? evaluateSync(req) : { answers: {}, usage: { input_tokens: 0, output_tokens: 0 }, cached: 0, fetched: 0, errors: [] };

@@ -14,6 +14,18 @@ export function resolveApiKey(cwd: string, env: NodeJS.ProcessEnv = process.env,
   return undefined;
 }
 
+export function resolveOpenRouterKey(cwd: string, env: NodeJS.ProcessEnv = process.env, home: string = homedir()): string | undefined {
+  const fromEnv = env.OPENROUTER_API_KEY?.trim();
+  if (fromEnv) return fromEnv;
+  const fromDotenv = readDotenv(join(cwd, ".env")).OPENROUTER_API_KEY;
+  if (fromDotenv) return fromDotenv;
+  try {
+    const cfg = JSON.parse(readFileSync(join(home, ".config", "jev", "config.json"), "utf8")) as { openrouterApiKey?: string };
+    if (typeof cfg.openrouterApiKey === "string" && cfg.openrouterApiKey.trim()) return cfg.openrouterApiKey.trim();
+  } catch { /* no global config */ }
+  return undefined;
+}
+
 function readDotenv(file: string): Record<string, string> {
   let text: string;
   try { text = readFileSync(file, "utf8"); } catch { return {}; }

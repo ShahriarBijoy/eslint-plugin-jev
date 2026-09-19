@@ -21,7 +21,7 @@ for (const file of readdirSync("bench/labels").filter((f) => f.endsWith(".jsonl"
     const state = unitState(u);
     return { id: u.id, name: u.name, state, stateText: stateText(state), questions: QUESTIONS[rule](u), estimatedTokens: u.estimatedTokens };
   });
-  const res = await evaluate({ filename: rule, cwd: process.cwd(), model, timeoutMs: 60_000, concurrency: 4, cacheDir: "bench/.cache", maxFunctionTokens: 6000, units });
+  const res = await evaluate({ filename: rule, cwd: process.cwd(), model, timeoutMs: 60_000, concurrency: 4, cacheDir: "bench/.cache", maxFunctionTokens: 6000, units, provider: "typesafe" });
   const rows = cases.map((c, i) => { const a = res.answers[`c${i}`] ?? {}; const p = Math.max(...Object.values(a).map((x) => x.noul ?? 0), 0); return { id: c.id, expected: c.expected, p }; });
   writeFileSync(`bench/results/${rule}.json`, JSON.stringify({ model: res.model, usage: res.usage, errors: res.errors, rows }, null, 2));
   console.log(`${rule}: ${rows.length} cases, ${res.fetched} fetched, ${res.cached} cached, ${res.usage.input_tokens} input tokens, ${res.errors.length} errors`);

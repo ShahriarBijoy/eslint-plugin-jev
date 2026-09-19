@@ -8,7 +8,7 @@ import type { EvaluateRequest } from "../../src/types.js";
 function req(overrides: Partial<EvaluateRequest> = {}): EvaluateRequest {
   return {
     filename: "a.ts", cwd: process.cwd(), model: "jev-latest", timeoutMs: 2000, concurrency: 2,
-    cacheDir: mkdtempSync(join(tmpdir(), "jevc-")), maxFunctionTokens: 6000,
+    cacheDir: mkdtempSync(join(tmpdir(), "jevc-")), maxFunctionTokens: 6000, provider: "typesafe",
     units: [
       { id: "f0", name: "getUser", state: { function: { name: "getUser" } }, stateText: '{"function":{"name":"getUser"}}', estimatedTokens: 10,
         questions: { "name-matches-body:main": { type: "noul", instructions: "q" }, "name-matches-body:verb": { type: "choice", instructions: "v", criteria: { get: null, delete: null } } } },
@@ -119,5 +119,64 @@ describe("evaluate", () => {
     expect(calls).toHaveLength(1);
     expect(res.errors).toEqual([{ kind: "transport", message: expect.stringContaining("ECONNREFUSED") }]);
     expect(res.errors[0]).not.toHaveProperty("unitId");
+  });
+
+  describe("provider selection", () => {
+    it("provider: openrouter with only a TypeSafe key present yields one no_key error naming OPENROUTER_API_KEY and makes no request", async () => {
+      const calls: unknown[] = [];
+      const res = await evaluate(req({ provider: "openrouter" }), { client: fakeClient(calls), apiKey: "ts-key", openrouterApiKey: undefined });
+      expect(calls).toHaveLength(0);
+      expect(res.errors).toEqual([{ kind: "no_key", message: expect.stringContaining("OPENROUTER_API_KEY") }]);
+    });
+
+    it("provider: openrouter reports one fatal error naming OPENROUTER_API_KEY on a 401, with no key material in the message", async () => {
+      const calls: unknown[] = [];
+      const client: JevClient = { async systemOne(input) { calls.push(input); throw Object.assign(new Error("Unauthorized"), { status: 401 }); } };
+      const res = await evaluate(req({ provider: "openrouter", concurrency: 1 }), { client, apiKey: undefined, openrouterApiKey: "or-secret-key" });
+      expect(res.errors).toEqual([{ kind: "api", message: "OpenRouter rejected the API key (HTTP 401). Check OPENROUTER_API_KEY." }]);
+      expect(res.errors[0].message).not.toContain("or-secret-key");
+    });
+
+    it("provider: auto with both keys present uses TypeSafe", async () => {
+      const client: JevClient = { async systemOne() { throw Object.assign(new Error("Unauthorized"), { status: 401 }); } };
+      const res = await evaluate(req({ provider: "auto", concurrency: 1 }), { client, apiKey: "ts-key", openrouterApiKey: "or-key" });
+      expect(res.errors[0].message).toBe("TypeSafe rejected the API key (HTTP 401). Check TYPESAFE_API_KEY.");
+    });
+
+    it("provider: auto with only an OpenRouter key uses the OpenRouter client", async () => {
+      const client: JevClient = { async systemOne() { throw Object.assign(new Error("Unauthorized"), { status: 401 }); } };
+      const res = await evaluate(req({ provider: "auto", concurrency: 1 }), { client, apiKey: undefined, openrouterApiKey: "or-key" });
+      expect(res.errors[0].message).toBe("OpenRouter rejected the API key (HTTP 401). Check OPENROUTER_API_KEY.");
+    });
+
+    it("provider: auto reports one no_key error naming both keys when neither is set", async () => {
+      const res = await evaluate(req({ provider: "auto" }), { client: fakeClient(), apiKey: undefined, openrouterApiKey: undefined });
+      expect(res.errors).toEqual([{ kind: "no_key", message: expect.stringContaining("TYPESAFE_API_KEY") }]);
+      expect(res.errors[0].message).toContain("OPENROUTER_API_KEY");
+    });
+
+    it("does not serve cache entries written under one provider to the other", async () => {
+      const r = req();
+      const cache = new JsonlCache(r.cacheDir); await cache.load();
+      await evaluate({ ...r, provider: "typesafe" }, { client: fakeClient(), apiKey: "k", cache });
+      const calls: unknown[] = [];
+      const res = await evaluate({ ...r, provider: "openrouter" }, { client: fakeClient(calls), openrouterApiKey: "k", cache });
+      expect(calls.length).toBeGreaterThan(0);
+      expect(res.cached).toBe(0);
+      expect(res.fetched).toBe(3);
+    });
+
+    it("integration: a real OpenRouter 401 (via stubbed fetch) becomes one fatal error naming OPENROUTER_API_KEY", async () => {
+      const fetchMock = vi.fn(async () => new Response("Unauthorized: bad key", { status: 401 }));
+      vi.stubGlobal("fetch", fetchMock);
+      try {
+        const res = await evaluate(req({ provider: "openrouter", concurrency: 1 }), { apiKey: undefined, openrouterApiKey: "or-secret-key" });
+        expect(res.errors).toEqual([{ kind: "api", message: "OpenRouter rejected the API key (HTTP 401). Check OPENROUTER_API_KEY." }]);
+        expect(res.errors[0].message).not.toContain("or-secret-key");
+        expect(fetchMock).toHaveBeenCalled();
+      } finally {
+        vi.unstubAllGlobals();
+      }
+    });
   });
 });

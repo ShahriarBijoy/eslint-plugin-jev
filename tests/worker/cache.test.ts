@@ -12,13 +12,14 @@ async function lineBytes(model = "m", key = "kx"): Promise<number> {
 }
 
 describe("cacheKey", () => {
-  it("changes with model, question and state", () => {
+  it("changes with provider, model, question and state", () => {
     const q = { type: "noul" as const, instructions: "x" };
-    const a = cacheKey("jev-1.13.0", q, "s");
+    const a = cacheKey("typesafe", "jev-1.13.0", q, "s");
     expect(a).toMatch(/^[0-9a-f]{64}$/);
-    expect(cacheKey("jev-1.12.0", q, "s")).not.toBe(a);
-    expect(cacheKey("jev-1.13.0", { ...q, instructions: "y" }, "s")).not.toBe(a);
-    expect(cacheKey("jev-1.13.0", q, "t")).not.toBe(a);
+    expect(cacheKey("openrouter", "jev-1.13.0", q, "s")).not.toBe(a);
+    expect(cacheKey("typesafe", "jev-1.12.0", q, "s")).not.toBe(a);
+    expect(cacheKey("typesafe", "jev-1.13.0", { ...q, instructions: "y" }, "s")).not.toBe(a);
+    expect(cacheKey("typesafe", "jev-1.13.0", q, "t")).not.toBe(a);
   });
 });
 

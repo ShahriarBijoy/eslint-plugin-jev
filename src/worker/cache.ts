@@ -3,8 +3,8 @@ import { promises as fs } from "node:fs";
 import { join } from "node:path";
 import type { Answer, Question } from "../types.js";
 
-export function cacheKey(model: string, question: Question, stateText: string): string {
-  return createHash("sha256").update(JSON.stringify([model, question, stateText])).digest("hex");
+export function cacheKey(provider: string, model: string, question: Question, stateText: string): string {
+  return createHash("sha256").update(JSON.stringify([provider, model, question, stateText])).digest("hex");
 }
 
 interface Entry { answer: Answer; model: string; ts: number }

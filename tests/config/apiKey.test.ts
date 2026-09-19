@@ -1,7 +1,7 @@
 import { mkdtempSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { resolveApiKey } from "../../src/config/apiKey.js";
+import { resolveApiKey, resolveOpenRouterKey } from "../../src/config/apiKey.js";
 
 function dirs() { const cwd = mkdtempSync(join(tmpdir(), "jevcwd-")); const home = mkdtempSync(join(tmpdir(), "jevhome-")); return { cwd, home }; }
 
@@ -40,5 +40,34 @@ describe("resolveApiKey", () => {
     const { cwd, home } = dirs();
     writeFileSync(join(cwd, ".env"), 'TYPESAFE_API_KEY="a#b"\n');
     expect(resolveApiKey(cwd, {}, home)).toBe("a#b");
+  });
+});
+
+describe("resolveOpenRouterKey", () => {
+  it("prefers the environment variable", () => {
+    const { cwd, home } = dirs();
+    writeFileSync(join(cwd, ".env"), "OPENROUTER_API_KEY=fromfile\n");
+    expect(resolveOpenRouterKey(cwd, { OPENROUTER_API_KEY: "fromenv" }, home)).toBe("fromenv");
+  });
+  it("falls back to .env in cwd", () => {
+    const { cwd, home } = dirs();
+    writeFileSync(join(cwd, ".env"), "# keys\nOTHER=1\nOPENROUTER_API_KEY=\"quoted\"\n");
+    expect(resolveOpenRouterKey(cwd, {}, home)).toBe("quoted");
+  });
+  it("falls back to ~/.config/jev/config.json under the openrouterApiKey field", () => {
+    const { cwd, home } = dirs();
+    mkdirSync(join(home, ".config", "jev"), { recursive: true });
+    writeFileSync(join(home, ".config", "jev", "config.json"), JSON.stringify({ openrouterApiKey: "global" }));
+    expect(resolveOpenRouterKey(cwd, {}, home)).toBe("global");
+  });
+  it("returns undefined when nothing is set", () => {
+    const { cwd, home } = dirs();
+    expect(resolveOpenRouterKey(cwd, {}, home)).toBeUndefined();
+  });
+  it("does not read the TypeSafe key from the same config file", () => {
+    const { cwd, home } = dirs();
+    mkdirSync(join(home, ".config", "jev"), { recursive: true });
+    writeFileSync(join(home, ".config", "jev", "config.json"), JSON.stringify({ apiKey: "typesafe-only" }));
+    expect(resolveOpenRouterKey(cwd, {}, home)).toBeUndefined();
   });
 });

@@ -1,13 +1,14 @@
 import { TypeSafeClient } from "@typesafe-ai/sdk";
 import { resolve } from "node:path";
-import type { Answer, EvaluateError, EvaluateRequest, EvaluateResponse, EvaluateUnit, Question, UnitAnswers } from "../types.js";
-import { resolveApiKey } from "../config/apiKey.js";
+import type { Answer, EvaluateError, EvaluateRequest, EvaluateResponse, EvaluateUnit, Provider, Question, UnitAnswers } from "../types.js";
+import { resolveApiKey, resolveOpenRouterKey } from "../config/apiKey.js";
 import { JsonlCache, cacheKey } from "./cache.js";
+import { createOpenRouterClient } from "./openrouter.js";
 
 export interface JevClient {
   systemOne(input: { state: unknown; questions: Record<string, Question>; model: string }, opts: { signal: AbortSignal }): Promise<{ model: string; answers: Record<string, Answer & { type: string }>; usage: { input_tokens: number; output_tokens: number } }>;
 }
-export interface EvaluateDeps { client?: JevClient; apiKey?: string; cache?: JsonlCache }
+export interface EvaluateDeps { client?: JevClient; apiKey?: string; openrouterApiKey?: string; cache?: JsonlCache }
 
 const REQUEST_TOKEN_BUDGET = 28_000;
 
@@ -22,7 +23,7 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
     const ua: UnitAnswers = {};
     const missing: Record<string, Question> = {};
     for (const [qid, q] of Object.entries(unit.questions)) {
-      const hit = cache.get(cacheKey(req.model, q, unit.stateText));
+      const hit = cache.get(cacheKey(req.provider, req.model, q, unit.stateText));
       if (hit) { ua[qid] = hit; res.cached++; } else missing[qid] = q;
     }
     res.answers[unit.id] = ua;
@@ -32,9 +33,30 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
 
   // Only look up the key once we know a network call is actually needed: a fully cached run
   // never touches the environment, .env, or the global config file.
-  const apiKey = "apiKey" in deps ? deps.apiKey : resolveApiKey(req.cwd);
-  if (!apiKey) { res.errors.push({ kind: "no_key", message: "eslint-plugin-jev: TYPESAFE_API_KEY not set (env, .env, or ~/.config/jev/config.json). Jev rules are skipped." }); return res; }
-  const client: JevClient = deps.client ?? (new TypeSafeClient({ apiKey, defaultModel: req.model, timeout: Math.max(1000, req.timeoutMs), logLevel: "off" }) as unknown as JevClient);
+  const NO_KEY_HINT = "(env, .env, or ~/.config/jev/config.json). Jev rules are skipped.";
+  let apiKey: string | undefined;
+  let usingProvider: "typesafe" | "openrouter";
+  if (req.provider === "typesafe") {
+    apiKey = "apiKey" in deps ? deps.apiKey : resolveApiKey(req.cwd);
+    usingProvider = "typesafe";
+    if (!apiKey) { res.errors.push({ kind: "no_key", message: `eslint-plugin-jev: TYPESAFE_API_KEY not set ${NO_KEY_HINT}` }); return res; }
+  } else if (req.provider === "openrouter") {
+    apiKey = "openrouterApiKey" in deps ? deps.openrouterApiKey : resolveOpenRouterKey(req.cwd);
+    usingProvider = "openrouter";
+    if (!apiKey) { res.errors.push({ kind: "no_key", message: `eslint-plugin-jev: OPENROUTER_API_KEY not set ${NO_KEY_HINT}` }); return res; }
+  } else {
+    const tsKey = "apiKey" in deps ? deps.apiKey : resolveApiKey(req.cwd);
+    if (tsKey) {
+      apiKey = tsKey; usingProvider = "typesafe";
+    } else {
+      const orKey = "openrouterApiKey" in deps ? deps.openrouterApiKey : resolveOpenRouterKey(req.cwd);
+      if (!orKey) { res.errors.push({ kind: "no_key", message: `eslint-plugin-jev: neither TYPESAFE_API_KEY nor OPENROUTER_API_KEY is set ${NO_KEY_HINT}` }); return res; }
+      apiKey = orKey; usingProvider = "openrouter";
+    }
+  }
+  const client: JevClient = deps.client ?? (usingProvider === "typesafe"
+    ? (new TypeSafeClient({ apiKey, defaultModel: req.model, timeout: Math.max(1000, req.timeoutMs), logLevel: "off" }) as unknown as JevClient)
+    : createOpenRouterClient(apiKey, req.timeoutMs));
 
   // 2. Fan out per unit with a concurrency cap and one per-file deadline.
   const controller = new AbortController();
@@ -62,14 +84,14 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
           const { type: _t, ...answer } = raw;
           res.answers[unit.id][qid] = answer;
           res.fetched++;
-          await cache.set(cacheKey(req.model, unit.questions[qid], unit.stateText), answer, out.model);
+          await cache.set(cacheKey(req.provider, req.model, unit.questions[qid], unit.stateText), answer, out.model);
         }
       } catch (err) {
         // If another worker already declared the fatal, this failure is just a side effect of
         // that worker's controller.abort() (or a race that lost) — leave the unit unanswered
         // rather than reporting a second, misleading per-unit error.
         if (fatalPushed) continue;
-        const { fatal, ...info } = classify(err, unit.name, req.timeoutMs);
+        const { fatal, ...info } = classify(err, unit.name, req.timeoutMs, usingProvider);
         if (fatal) {
           fatalPushed = true;
           controller.abort();
@@ -88,17 +110,20 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
   return res;
 }
 
-function classify(err: unknown, name: string, timeoutMs: number): Omit<EvaluateError, "unitId"> & { fatal?: boolean } {
+function classify(err: unknown, name: string, timeoutMs: number, provider: "typesafe" | "openrouter"): Omit<EvaluateError, "unitId"> & { fatal?: boolean } {
   const e = err as { name?: string; status?: number; message?: string; body?: unknown };
   const msg = e?.message ?? String(err);
   if (e?.name === "AbortError" || e?.name === "APIUserAbortError") return { kind: "timeout", message: `${name}: file deadline of ${timeoutMs} ms reached.` };
+  const label = provider === "openrouter" ? "OpenRouter" : "TypeSafe";
+  const envVar = provider === "openrouter" ? "OPENROUTER_API_KEY" : "TYPESAFE_API_KEY";
+  const host = provider === "openrouter" ? "openrouter.ai" : "api.typesafe.ai";
   // 401/403 mean the key itself is bad: no retry or per-unit granularity will help, so this is
   // fatal for the whole file. Never echo the key; only the HTTP status is user data here.
-  if (e?.status === 401 || e?.status === 403) return { kind: "api", message: `TypeSafe rejected the API key (HTTP ${e.status}). Check TYPESAFE_API_KEY.`, fatal: true };
-  if (e?.status === 429) return { kind: "rate_limit", message: `${name}: TypeSafe rate limit (429) after retries.` };
+  if (e?.status === 401 || e?.status === 403) return { kind: "api", message: `${label} rejected the API key (HTTP ${e.status}). Check ${envVar}.`, fatal: true };
+  if (e?.status === 429) return { kind: "rate_limit", message: `${name}: ${label} rate limit (429) after retries.` };
   if (e?.status === 400 && /max_tokens_exceeded|too large|token/i.test(JSON.stringify(e.body ?? msg))) return { kind: "too_large", message: `${name}: request exceeds the model's token limit.` };
-  if (typeof e?.status === "number") return { kind: "api", message: `${name}: TypeSafe API error ${e.status}: ${msg}` };
+  if (typeof e?.status === "number") return { kind: "api", message: `${name}: ${label} API error ${e.status}: ${msg}` };
   // Transport failures (DNS/connection refused/etc.) and anything else unclassified mean the API
   // is unreachable for every unit in the file, not just this one, so they are also fatal.
-  return { kind: "transport", message: `could not reach api.typesafe.ai (${msg}).`, fatal: true };
+  return { kind: "transport", message: `could not reach ${host} (${msg}).`, fatal: true };
 }
