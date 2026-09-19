@@ -2,7 +2,7 @@
 
 **Lint for meaning. ESLint rules that are plain-English questions, judged in ~100 ms by TypeSafe's Jev.**
 
-![demo](docs/demo.gif)
+<!-- ![demo](docs/demo.gif) — uncomment once docs/demo.gif is recorded -->
 
 Prettier fixes the shape of your code. ESLint matches it against known bad patterns. Neither one
 ever asks what the code is *for*, so a function called `getUser` that deletes the user passes both
@@ -19,19 +19,20 @@ and the threshold that separates them lives in your ESLint config.
 ## Install
 
 ```bash
-npm i -D eslint-plugin-jev
-```
-
-```bash
-echo 'TYPESAFE_API_KEY=...' >> .env    # get a key from the TypeSafe console: https://console.typesafe.ai
+npm i -D eslint-plugin-jev @typescript-eslint/parser   # only if you lint TypeScript
+echo 'TYPESAFE_API_KEY=...' >> .env                    # get a key from the TypeSafe console: https://console.typesafe.ai
 ```
 
 ```js
 // eslint.config.js
 import { defineConfig } from "eslint/config";
+import tsParser from "@typescript-eslint/parser";
 import jev from "eslint-plugin-jev";
 
-export default defineConfig([...jev.configs.recommended]);
+export default defineConfig([
+  { files: ["**/*.ts"], languageOptions: { parser: tsParser } }, // drop this line for plain JavaScript
+  ...jev.configs.recommended,
+]);
 ```
 
 That is the whole setup. The three built-in rules run at `warn`. If no key is found, the rules stay
@@ -108,6 +109,7 @@ import { defineConfig } from "eslint/config";
 import jev from "eslint-plugin-jev";
 
 export default defineConfig([
+  // ...the parser block from Install goes here
   ...jev.configs.recommended,
   {
     settings: { jev: { model: "jev-1.13.0" } },
@@ -222,9 +224,8 @@ question with a probability; the rule compares it to the threshold and reports a
 comment, or the throwing line. Every answer is written to a content-hashed cache on disk, which is
 why the second run costs nothing and takes milliseconds.
 
-The picture version is here: [Lint for meaning, explained with
-pictures](https://claude.ai/artifact/JX3BhyjN4D1fEgwFbEhadZ). The model behind it is documented at
-[docs.typesafe.ai](https://docs.typesafe.ai).
+Jev is TypeSafe's small judgment model: you give it some state and a question, and it gives you a
+probability rather than prose. It is documented at [docs.typesafe.ai](https://docs.typesafe.ai).
 
 ## What it is not
 
