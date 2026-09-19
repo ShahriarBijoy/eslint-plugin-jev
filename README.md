@@ -4,7 +4,7 @@
 
 Live demo: https://shahriarbijoy.github.io/eslint-plugin-jev/
 
-<!-- ![demo](docs/demo.gif) — uncomment once docs/demo.gif is recorded -->
+![Run eslint on a file whose function name lies, then fix it and run again](docs/demo.gif)
 
 Prettier fixes the shape of your code. ESLint matches it against known bad patterns. Neither one
 ever asks what the code is *for*, so a function called `getUser` that deletes the user passes both
