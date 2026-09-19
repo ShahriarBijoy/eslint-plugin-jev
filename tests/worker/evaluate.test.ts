@@ -1,0 +1,81 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { evaluate, type JevClient } from "../../src/worker/evaluate.js";
+import { JsonlCache } from "../../src/worker/cache.js";
+import type { EvaluateRequest } from "../../src/types.js";
+
+function req(overrides: Partial<EvaluateRequest> = {}): EvaluateRequest {
+  return {
+    filename: "a.ts", cwd: process.cwd(), model: "jev-latest", timeoutMs: 2000, concurrency: 2,
+    cacheDir: mkdtempSync(join(tmpdir(), "jevc-")), maxFunctionTokens: 6000,
+    units: [
+      { id: "f0", name: "getUser", state: { function: { name: "getUser" } }, stateText: '{"function":{"name":"getUser"}}', estimatedTokens: 10,
+        questions: { "name-matches-body:main": { type: "noul", instructions: "q" }, "name-matches-body:verb": { type: "choice", instructions: "v", criteria: { get: null, delete: null } } } },
+      { id: "f1", name: "saveOrder", state: { function: { name: "saveOrder" } }, stateText: '{"function":{"name":"saveOrder"}}', estimatedTokens: 10,
+        questions: { "name-matches-body:main": { type: "noul", instructions: "q" } } },
+    ],
+    ...overrides,
+  };
+}
+
+function fakeClient(calls: unknown[] = []): JevClient {
+  return {
+    async systemOne(input) {
+      calls.push(input);
+      const answers: Record<string, { type: string; noul?: number; choice?: string; probabilities?: Record<string, number>; confidence?: number }> = {};
+      for (const [id, q] of Object.entries(input.questions)) {
+        answers[id] = q.type === "noul" ? { type: "noul", noul: 0.9 } : { type: "choice", choice: "delete", probabilities: { get: 0.1, delete: 0.9 }, confidence: 0.8 };
+      }
+      return { model: "jev-1.13.0", answers, usage: { input_tokens: 100, output_tokens: 5 } };
+    },
+  };
+}
+
+describe("evaluate", () => {
+  it("sends one request per unit and returns typed answers", async () => {
+    const calls: unknown[] = [];
+    const res = await evaluate(req(), { client: fakeClient(calls), apiKey: "k" });
+    expect(calls).toHaveLength(2);
+    expect(res.answers.f0["name-matches-body:main"]).toEqual({ noul: 0.9 });
+    expect(res.answers.f0["name-matches-body:verb"]).toEqual({ choice: "delete", probabilities: { get: 0.1, delete: 0.9 }, confidence: 0.8 });
+    expect(res.fetched).toBe(3); expect(res.cached).toBe(0); expect(res.model).toBe("jev-1.13.0");
+    expect(res.usage.input_tokens).toBe(200); expect(res.errors).toEqual([]);
+  });
+  it("serves repeated questions from the cache and only fetches misses", async () => {
+    const r = req();
+    const cache = new JsonlCache(r.cacheDir); await cache.load();
+    await evaluate(r, { client: fakeClient(), apiKey: "k", cache });
+    const calls: unknown[] = [];
+    const res = await evaluate(r, { client: fakeClient(calls), apiKey: "k", cache });
+    expect(calls).toHaveLength(0); expect(res.cached).toBe(3); expect(res.fetched).toBe(0);
+  });
+  it("reports no_key without calling the client", async () => {
+    const calls: unknown[] = [];
+    const res = await evaluate(req(), { client: fakeClient(calls), apiKey: undefined });
+    expect(calls).toHaveLength(0);
+    expect(res.errors).toEqual([{ kind: "no_key", message: expect.stringContaining("TYPESAFE_API_KEY") }]);
+  });
+  it("skips units over the token budget with a too_large error", async () => {
+    const r = req({ maxFunctionTokens: 5 });
+    r.units[0].estimatedTokens = 10; r.units[1].estimatedTokens = 1;
+    const calls: unknown[] = [];
+    const res = await evaluate(r, { client: fakeClient(calls), apiKey: "k" });
+    expect(calls).toHaveLength(1);
+    expect(res.errors).toEqual([{ unitId: "f0", kind: "too_large", message: expect.any(String) }]);
+  });
+  it("maps SDK errors to kinds per unit and keeps other units", async () => {
+    const client: JevClient = { async systemOne(input) {
+      if ((input.state as { function: { name: string } }).function.name === "getUser") { const e = new Error("limit") as Error & { status?: number }; e.status = 429; throw e; }
+      return fakeClient().systemOne(input, { signal: new AbortController().signal });
+    } };
+    const res = await evaluate(req(), { client, apiKey: "k" });
+    expect(res.errors).toEqual([{ unitId: "f0", kind: "rate_limit", message: expect.any(String) }]);
+    expect(res.answers.f1["name-matches-body:main"]).toEqual({ noul: 0.9 });
+  });
+  it("aborts on the per-file timeout and reports timeout for unfinished units", async () => {
+    const client: JevClient = { systemOne: (_i, { signal }) => new Promise((_, rej) => signal.addEventListener("abort", () => rej(Object.assign(new Error("aborted"), { name: "AbortError" })))) };
+    const res = await evaluate(req({ timeoutMs: 50 }), { client, apiKey: "k" });
+    expect(res.errors.map((e) => e.kind)).toEqual(["timeout", "timeout"]);
+  });
+});
