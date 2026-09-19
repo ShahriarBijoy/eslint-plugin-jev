@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin-jev",
-  "version": "0.1.0",
+  "version": "0.0.0",
   "description": "ESLint rules that are plain-English questions, judged by TypeSafe's Jev model. Lint for meaning, not shape.",
   "type": "module",
   "main": "./dist/index.js",
