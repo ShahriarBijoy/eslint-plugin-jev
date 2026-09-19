@@ -46,3 +46,36 @@ jobs:
           # exchanges this job's OIDC identity (id-token: write above) for a short-lived
           # credential and attaches provenance automatically.
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # changesets/action only pushes a tag and opens a GitHub release when it can parse
+      # the publish output, and the current CLI prints a format it does not recognise, so
+      # 0.2.0 published with no tag and no release. Do it here instead. This is idempotent:
+      # it exits quietly when the release already exists, and it never invents a release
+      # for a version that is not actually on npm.
+      - name: Tag and release the published version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          name=$(node -p "require('./package.json').name")
+          version=$(node -p "require('./package.json').version")
+          tag="$name@$version"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "release $tag already exists"; exit 0
+          fi
+          # A just-published version can take a few seconds to appear, so retry before
+          # concluding that this run did not publish anything.
+          published=""
+          for _ in 1 2 3 4 5; do
+            if npm view "$tag" version >/dev/null 2>&1; then published=yes; break; fi
+            sleep 10
+          done
+          if [ -z "$published" ]; then
+            echo "$tag is not on npm; nothing to release"; exit 0
+          fi
+          awk -v v="$version" '$0 ~ "^## " v "$" { inside=1; next } inside && /^## / { exit } inside { print }' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag" -m "$tag"
+          git push origin "refs/tags/$tag"
+          gh release create "$tag" --title "$tag" --notes-file "$RUNNER_TEMP/notes.md" --latest
