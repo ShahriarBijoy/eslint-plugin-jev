@@ -49,6 +49,13 @@ pnpm bench && pnpm bench:report   # scores the labeled cases, prints precision/r
 writes `bench/results/latest.md`. Commit that file when the numbers change; the per-case JSON next
 to it is git-ignored.
 
+### Smoking a provider
+
+`pnpm smoke` talks to TypeSafe by default. To smoke OpenRouter instead, put `OPENROUTER_API_KEY` in
+`.env` and run `JEV_PROVIDER=openrouter pnpm smoke`. The recorded site demo
+(`site/replay.json`, via `pnpm record:replay`) is always produced from TypeSafe, regardless of
+`JEV_PROVIDER`.
+
 Never paste a key, or any output containing one, into an issue, a test fixture, or a commit.
 
 ## Site

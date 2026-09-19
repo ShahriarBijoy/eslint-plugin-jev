@@ -23,7 +23,10 @@ and the threshold that separates them lives in your ESLint config.
 ```bash
 npm i -D @shahriarbijoy/eslint-plugin-jev @typescript-eslint/parser   # only if you lint TypeScript
 echo 'TYPESAFE_API_KEY=...' >> .env                    # get a key from the TypeSafe console: https://console.typesafe.ai
+# echo 'OPENROUTER_API_KEY=...' >> .env                # alternative: a key from https://openrouter.ai/keys
 ```
+
+With both keys set, TypeSafe is used unless `settings.jev.provider` says otherwise.
 
 The package is scoped because npm reserves unscoped names this close to `eslint-plugin-jest`. Rule ids are still `jev/name-matches-body` and friends.
 
@@ -184,11 +187,18 @@ settings: {
     cacheDir: "node_modules/.cache/eslint-plugin-jev",
     strict: false,           // true: a missing key or transport failure is reported as a lint problem at line 1, at the rule's configured severity
     ignoreNames: ["^use[A-Z]", "^on[A-Z]", "^handle[A-Z]", "^toJSON$"],  // regexes, for name-matches-body
+    provider: "auto",        // "auto" (default) | "typesafe" | "openrouter" — which backend answers questions
   }
 }
 ```
 
 TypeScript users can type the block with `JevSettings` from the package.
+
+`provider: "auto"` uses TypeSafe when `TYPESAFE_API_KEY` is set and falls back to OpenRouter
+otherwise; `"typesafe"` and `"openrouter"` pin one backend regardless of which keys are present.
+Through OpenRouter the model id is namespaced automatically, so `model` stays `jev-latest` either
+way — OpenRouter's Decisions endpoint is currently in beta. The price is the same either way: $0.042
+per million input tokens, output free.
 
 `strict` does not change severity. Under the recommended config the report is a warning; set the
 jev rules to `"error"` in your config if you want a missing key to fail CI. Without `strict`, the
@@ -206,13 +216,14 @@ Unchanged functions then cost nothing.
 
 ### Where the key comes from
 
-Looked up in this order, first hit wins:
+Each key is looked up independently, in this order, first hit wins:
 
-1. `TYPESAFE_API_KEY` in the environment
-2. `TYPESAFE_API_KEY` in a `.env` file in the project root
-3. `{ "apiKey": "..." }` in `~/.config/jev/config.json`
+1. in the environment
+2. in a `.env` file in the directory ESLint runs from
+3. in `~/.config/jev/config.json`, under `apiKey` for TypeSafe or `openrouterApiKey` for OpenRouter
 
-The key is read inside a worker thread and never appears in a diagnostic, a log line, or the cache.
+TypeSafe reads `TYPESAFE_API_KEY`; OpenRouter reads `OPENROUTER_API_KEY`. The key is read inside a
+worker thread and never appears in a diagnostic, a log line, or the cache.
 
 ## Editor setup
 
@@ -256,10 +267,13 @@ Set up eslint-plugin-jev in this repository.
    `import tsParser from "@typescript-eslint/parser";` and put
    `{ files: ["**/*.ts"], languageOptions: { parser: tsParser } }` before
    the spread.
-4. If the user gave you a key, append TYPESAFE_API_KEY=<key> to .env in the
-   directory ESLint runs from (normally the repository root). Otherwise add
-   TYPESAFE_API_KEY= to .env.example and tell the user to get a key at
-   https://console.typesafe.ai and put it in .env.
+4. If the user gave you a TypeSafe key, append TYPESAFE_API_KEY=<key> to .env
+   in the directory ESLint runs from (normally the repository root). If they
+   gave you an OpenRouter key instead, append OPENROUTER_API_KEY=<key> there.
+   Otherwise add both TYPESAFE_API_KEY= and OPENROUTER_API_KEY= to
+   .env.example, and tell the user to get a TypeSafe key at
+   https://console.typesafe.ai or an OpenRouter key at https://openrouter.ai/keys,
+   then put it in .env.
 5. Make sure .env is listed in .gitignore. Add it if it is missing.
 6. Run `npx eslint <one source file>` and paste the warnings verbatim. If it
    prints nothing and no key was given, say the rules are inactive until a

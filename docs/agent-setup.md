@@ -25,10 +25,13 @@ Set up eslint-plugin-jev in this repository.
    `import tsParser from "@typescript-eslint/parser";` and put
    `{ files: ["**/*.ts"], languageOptions: { parser: tsParser } }` before
    the spread.
-4. If the user gave you a key, append TYPESAFE_API_KEY=<key> to .env in the
-   directory ESLint runs from (normally the repository root). Otherwise add
-   TYPESAFE_API_KEY= to .env.example and tell the user to get a key at
-   https://console.typesafe.ai and put it in .env.
+4. If the user gave you a TypeSafe key, append TYPESAFE_API_KEY=<key> to .env
+   in the directory ESLint runs from (normally the repository root). If they
+   gave you an OpenRouter key instead, append OPENROUTER_API_KEY=<key> there.
+   Otherwise add both TYPESAFE_API_KEY= and OPENROUTER_API_KEY= to
+   .env.example, and tell the user to get a TypeSafe key at
+   https://console.typesafe.ai or an OpenRouter key at https://openrouter.ai/keys,
+   then put it in .env.
 5. Make sure .env is listed in .gitignore. Add it if it is missing.
 6. Run `npx eslint <one source file>` and paste the warnings verbatim. If it
    prints nothing and no key was given, say the rules are inactive until a

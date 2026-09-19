@@ -152,8 +152,11 @@
           <button class="btn btn-tiny copy" type="button" data-copy-from="snip-install"><span class="copy-label">Copy</span></button>
         </figcaption>
         <pre><code id="snip-install">npm i -D @shahriarbijoy/eslint-plugin-jev @typescript-eslint/parser   # only if you lint TypeScript
-echo 'TYPESAFE_API_KEY=...' &gt;&gt; .env                    # get a key from the TypeSafe console: https://console.typesafe.ai</code></pre>
+echo 'TYPESAFE_API_KEY=...' &gt;&gt; .env                    # get a key from the TypeSafe console: https://console.typesafe.ai
+# echo 'OPENROUTER_API_KEY=...' &gt;&gt; .env                # alternative: a key from https://openrouter.ai/keys</code></pre>
       </figure>
+      <p class="aside">With both keys set, TypeSafe is used unless <code>settings.jev.provider</code>
+        says otherwise.</p>
 
       <figure class="snippet">
         <figcaption><span class="snippet-name">eslint.config.js</span>
@@ -174,14 +177,16 @@ export default defineConfig([
     <div class="cards cards-2 install-notes">
       <article class="card">
         <h3>Where the key comes from</h3>
-        <p>Looked up in this order, first hit wins:</p>
+        <p>Each key is looked up independently, in this order, first hit wins:</p>
         <ol class="tight">
-          <li><code>TYPESAFE_API_KEY</code> in the environment</li>
-          <li><code>TYPESAFE_API_KEY</code> in a <code>.env</code> file in the project root</li>
-          <li><code>{ "apiKey": "..." }</code> in <code>~/.config/jev/config.json</code></li>
+          <li>in the environment</li>
+          <li>in a <code>.env</code> file in the directory ESLint runs from</li>
+          <li>in <code>~/.config/jev/config.json</code>, under <code>apiKey</code> for TypeSafe or
+            <code>openrouterApiKey</code> for OpenRouter</li>
         </ol>
-        <p>The key is read inside a worker thread and never appears in a diagnostic, a log line, or
-          the cache.</p>
+        <p>TypeSafe reads <code>TYPESAFE_API_KEY</code>; OpenRouter reads
+          <code>OPENROUTER_API_KEY</code>. The key is read inside a worker thread and never appears
+          in a diagnostic, a log line, or the cache.</p>
       </article>
       <article class="card">
         <h3>VS Code</h3>
@@ -212,9 +217,14 @@ export default defineConfig([
     cacheDir: "node_modules/.cache/eslint-plugin-jev",
     strict: false,           // true: a missing key or transport failure is reported as a lint problem at line 1, at the rule's configured severity
     ignoreNames: ["^use[A-Z]", "^on[A-Z]", "^handle[A-Z]", "^toJSON$"],  // regexes, for name-matches-body
+    provider: "auto",        // "auto" (default) | "typesafe" | "openrouter" — which backend answers questions
   }
 }</code></pre>
       </figure>
+      <p class="aside"><code>"auto"</code> uses TypeSafe when <code>TYPESAFE_API_KEY</code> is set
+        and falls back to OpenRouter otherwise; through OpenRouter the model id is namespaced
+        automatically, so <code>model</code> stays <code>jev-latest</code> either way. Same price
+        either way too: $0.042 per million input tokens, output free.</p>
     </details>
   </div>
 </section>
@@ -299,10 +309,13 @@ export default defineConfig([
    `import tsParser from "@typescript-eslint/parser";` and put
    `{ files: ["**/*.ts"], languageOptions: { parser: tsParser } }` before
    the spread.
-4. If the user gave you a key, append TYPESAFE_API_KEY=&lt;key&gt; to .env in the
-   directory ESLint runs from (normally the repository root). Otherwise add
-   TYPESAFE_API_KEY= to .env.example and tell the user to get a key at
-   https://console.typesafe.ai and put it in .env.
+4. If the user gave you a TypeSafe key, append TYPESAFE_API_KEY=&lt;key&gt; to .env
+   in the directory ESLint runs from (normally the repository root). If they
+   gave you an OpenRouter key instead, append OPENROUTER_API_KEY=&lt;key&gt; there.
+   Otherwise add both TYPESAFE_API_KEY= and OPENROUTER_API_KEY= to
+   .env.example, and tell the user to get a TypeSafe key at
+   https://console.typesafe.ai or an OpenRouter key at https://openrouter.ai/keys,
+   then put it in .env.
 5. Make sure .env is listed in .gitignore. Add it if it is missing.
 6. Run `npx eslint &lt;one source file&gt;` and paste the warnings verbatim. If it
    prints nothing and no key was given, say the rules are inactive until a
