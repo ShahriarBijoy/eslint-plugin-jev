@@ -14,5 +14,10 @@ tester.run("check", rule, {
       errors: [{ messageId: "flagged", data: { id: "no-secret-logging", question: "Does this function log a secret?", p: "0.97", threshold: "0.80" }, line: 3 }] },
     { code: "function logsKey() {\n  const k = key;\n  console.log(k);\n}", options: [{ checks: [{ ...checks[0], locate: false }] }],
       errors: [{ messageId: "flagged", line: 1, column: 10 }] },
+    { code: "function logsKey() {\n  const k = key;\n  console.log(k);\n}",
+      options: [{ checks: [checks[0], { id: "no-secret-logging", question: "A different question that is long?" }] }],
+      errors: [{ messageId: "flagged", data: { id: "no-secret-logging", question: "Does this function log a secret?", p: "0.97", threshold: "0.80" }, line: 3 }] },
+    { code: "function outOfRange() {\n  const k = key;\n}", options: [{ checks }],
+      errors: [{ messageId: "flagged", line: 1, column: 10 }] },
   ],
 });
