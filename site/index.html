@@ -224,8 +224,10 @@ export default defineConfig([
       </figure>
       <p class="aside"><code>"auto"</code> uses TypeSafe when <code>TYPESAFE_API_KEY</code> is set
         and falls back to OpenRouter otherwise; through OpenRouter the model id is namespaced
-        automatically, so <code>model</code> stays <code>jev-latest</code> either way. Same price
-        either way too: $0.042 per million input tokens, output free.</p>
+        automatically, so <code>model</code> stays <code>jev-latest</code> either way. The model's
+        listed per-token price is the same through either route, and OpenRouter's own credit fees
+        are separate. Through TypeSafe that price is $0.042 per million input tokens, output
+        free.</p>
     </details>
   </div>
 </section>

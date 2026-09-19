@@ -142,7 +142,17 @@ function classify(err: unknown, name: string, timeoutMs: number, provider: "type
   // 401/403 mean the key itself is bad: no retry or per-unit granularity will help, so this is
   // fatal for the whole file. Never echo the key; only the HTTP status is user data here.
   if (e?.status === 401 || e?.status === 403) return { kind: "api", message: `${label} rejected the API key (HTTP ${e.status}). Check ${envVar}.`, fatal: true };
-  if (e?.status === 429) return { kind: "rate_limit", message: `${name}: ${label} rate limit (429) after retries.` };
+  // OpenRouter returns 402 when the account is out of credits; every other unit in the file will
+  // fail the same way, so this is fatal like 401/403 rather than a per-unit error.
+  if (provider === "openrouter" && e?.status === 402) {
+    return { kind: "api", message: `${label} account is out of credits (HTTP 402). Add credits at https://openrouter.ai/credits.`, fatal: true };
+  }
+  // The TypeSafe SDK retries a 429 twice before surfacing it, so "after retries" is accurate there;
+  // the OpenRouter fetch client never retries, so that wording would be false for it.
+  if (e?.status === 429) {
+    const suffix = provider === "typesafe" ? "rate limit (429) after retries." : "rate limit (429).";
+    return { kind: "rate_limit", message: `${name}: ${label} ${suffix}` };
+  }
   if (e?.status === 400 && /max_tokens_exceeded|too large|token/i.test(JSON.stringify(e.body ?? msg))) return { kind: "too_large", message: `${name}: request exceeds the model's token limit.` };
   if (typeof e?.status === "number") return { kind: "api", message: `${name}: ${label} API error ${e.status}: ${msg}` };
   // Transport failures (DNS/connection refused/etc.) and anything else unclassified mean the API

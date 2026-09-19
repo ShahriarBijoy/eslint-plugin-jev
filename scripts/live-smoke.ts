@@ -1,19 +1,19 @@
 import { ESLint } from "eslint";
 import tsParser from "@typescript-eslint/parser";
+import type { Provider } from "../src/types.js";
 
 let plugin: typeof import("../dist/index.js").default;
 try { plugin = (await import("../dist/index.js")).default; }
 catch { console.error("dist/ not found. Run `pnpm build` first."); process.exit(1); }
 
-const VALID_PROVIDERS = ["typesafe", "openrouter", "auto"] as const;
-type SmokeProvider = (typeof VALID_PROVIDERS)[number];
+const VALID_PROVIDERS: readonly Provider[] = ["typesafe", "openrouter", "auto"];
 
 const rawProvider = process.env.JEV_PROVIDER;
-let provider: SmokeProvider;
+let provider: Provider;
 if (!rawProvider) {
   provider = "typesafe";
 } else if ((VALID_PROVIDERS as readonly string[]).includes(rawProvider)) {
-  provider = rawProvider as SmokeProvider;
+  provider = rawProvider as Provider;
 } else {
   console.error(`JEV_PROVIDER must be typesafe, openrouter or auto (got "${rawProvider}")`);
   process.exit(1);

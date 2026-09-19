@@ -199,16 +199,18 @@ TypeScript users can type the block with `JevSettings` from the package.
 `provider: "auto"` uses TypeSafe when `TYPESAFE_API_KEY` is set and falls back to OpenRouter
 otherwise; `"typesafe"` and `"openrouter"` pin one backend regardless of which keys are present.
 Through OpenRouter the model id is namespaced automatically, so `model` stays `jev-latest` either
-way — OpenRouter's Decisions endpoint is currently in beta. The price is the same either way: $0.042
-per million input tokens, output free.
+way — OpenRouter's Decisions endpoint is currently in beta. The model's listed per-token price is
+the same through either route, and OpenRouter's own credit fees are separate. Through TypeSafe that
+price is $0.042 per million input tokens, output free.
 
 `strict` does not change severity. Under the recommended config the report is a warning; set the
 jev rules to `"error"` in your config if you want a missing key to fail CI. Without `strict`, the
 plugin prints one console warning per process and stays silent.
 
-The cache is keyed by the model id you configure. `jev-latest` answers stay cached after the alias
-moves; pin a version (for example `jev-1.13.0`) or delete `node_modules/.cache/eslint-plugin-jev`
-to refresh.
+The cache is keyed by the backend that answered and the model id you configure. Switching
+`provider`, or upgrading from 0.1.0, refetches everything once because the old entries were keyed
+without a backend. `jev-latest` answers stay cached after the alias moves; pin a version (for
+example `jev-1.13.0`) or delete `node_modules/.cache/eslint-plugin-jev` to refresh.
 
 `ignoreNames` exists because `useSomething`, `onSomething` and `toJSON` are named by convention
 rather than by what they do, and the model is right to find them odd.

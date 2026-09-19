@@ -64,6 +64,15 @@ describe("createOpenRouterClient", () => {
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
+  it("falls back to the status text, then a bare status code, when the error body is empty", async () => {
+    const fetchMock = vi.fn(async () => new Response("", { status: 402, statusText: "Payment Required" }));
+    vi.stubGlobal("fetch", fetchMock);
+    const client = createOpenRouterClient("k", 8000);
+    const controller = new AbortController();
+    await expect(client.systemOne({ state: {}, questions: {}, model: "jev-latest" }, { signal: controller.signal }))
+      .rejects.toMatchObject({ status: 402, message: "Payment Required" });
+  });
+
   it("propagates a network failure as-is", async () => {
     const fetchMock = vi.fn(async () => { throw new Error("ECONNREFUSED"); });
     vi.stubGlobal("fetch", fetchMock);

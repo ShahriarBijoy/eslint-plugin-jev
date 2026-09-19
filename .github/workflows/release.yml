@@ -28,10 +28,9 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-          registry-url: https://registry.npmjs.org
 
       # Trusted publishing needs npm >= 11.5.1; the runner's bundled npm is older.
-      - run: npm install -g npm@latest
+      - run: npm install -g npm@^11.5.1
 
       - run: pnpm install --frozen-lockfile
 

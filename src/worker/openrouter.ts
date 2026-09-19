@@ -30,8 +30,11 @@ export function createOpenRouterClient(apiKey: string, timeoutMs: number): JevCl
         signal: opts.signal,
       });
       if (!res.ok) {
-        const text = (await res.text()).slice(0, 200);
-        throw Object.assign(new Error(text), { status: res.status });
+        // A non-2xx response can arrive with an empty body (some gateway/proxy failures do this);
+        // falling straight through to `new Error("")` would leave the diagnostic ending in a
+        // dangling colon, so fall back to the status text, then the bare status code.
+        const text = (await res.text()).slice(0, 200).trim();
+        throw Object.assign(new Error(text || res.statusText || `HTTP ${res.status}`), { status: res.status });
       }
       return (await res.json()) as { model: string; answers: Record<string, Answer & { type: string }>; usage: { input_tokens: number; output_tokens: number } };
     },

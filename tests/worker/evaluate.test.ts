@@ -71,8 +71,23 @@ describe("evaluate", () => {
       return fakeClient().systemOne(input, { signal: new AbortController().signal });
     } };
     const res = await evaluate(req(), { client, apiKey: "k" });
-    expect(res.errors).toEqual([{ unitId: "f0", kind: "rate_limit", message: expect.any(String) }]);
+    expect(res.errors).toEqual([{ unitId: "f0", kind: "rate_limit", message: "getUser: TypeSafe rate limit (429) after retries." }]);
     expect(res.answers.f1["name-matches-body:main"]).toEqual({ noul: 0.9 });
+  });
+  it("uses a provider-specific 429 message: TypeSafe mentions retries, OpenRouter does not", async () => {
+    const client: JevClient = { async systemOne() { throw Object.assign(new Error("limit"), { status: 429 }); } };
+    const tsRes = await evaluate(req({ provider: "typesafe", concurrency: 1 }), { client, apiKey: "k" });
+    expect(tsRes.errors[0].message).toBe("getUser: TypeSafe rate limit (429) after retries.");
+    const orRes = await evaluate(req({ provider: "openrouter", concurrency: 1 }), { client, apiKey: undefined, openrouterApiKey: "k" });
+    expect(orRes.errors[0].message).toBe("getUser: OpenRouter rate limit (429).");
+  });
+  it("treats an OpenRouter 402 (out of credits) as a fatal file-level error pointing at openrouter.ai/credits", async () => {
+    const calls: unknown[] = [];
+    const client: JevClient = { async systemOne(input) { calls.push(input); throw Object.assign(new Error("insufficient credits"), { status: 402 }); } };
+    const res = await evaluate(req({ provider: "openrouter", concurrency: 1 }), { client, apiKey: undefined, openrouterApiKey: "or-key" });
+    expect(calls).toHaveLength(1);
+    expect(res.errors).toEqual([{ kind: "api", message: "OpenRouter account is out of credits (HTTP 402). Add credits at https://openrouter.ai/credits." }]);
+    expect(res.errors[0]).not.toHaveProperty("unitId");
   });
   it("aborts on the per-file timeout and reports timeout for unfinished units", async () => {
     const client: JevClient = { systemOne: (_i, { signal }) => new Promise((_, rej) => signal.addEventListener("abort", () => rej(Object.assign(new Error("aborted"), { name: "AbortError" })))) };

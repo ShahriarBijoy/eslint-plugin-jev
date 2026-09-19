@@ -66,7 +66,7 @@ async function lintVariant(example: ExampleDef, variant: "bad" | "fixed", tmpRoo
   const eslint = new ESLint({
     overrideConfigFile: true,
     overrideConfig: [
-      { settings: { jev: { cacheDir } } },
+      { settings: { jev: { cacheDir, provider: "typesafe" } } },
       { files: ["**/*.ts"], languageOptions: { parser: tsParser } },
       ...plugin.configs.recommended,
       ...(example.checks ? [{ rules: { "jev/check": ["warn", { checks: example.checks }] } }] : []),
