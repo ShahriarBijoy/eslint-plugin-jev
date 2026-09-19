@@ -33,3 +33,6 @@ export interface EvaluateError { unitId?: string; kind: ErrorKind; message: stri
 export interface EvaluateResponse { answers: Record<string, UnitAnswers>; model?: string; usage: { input_tokens: number; output_tokens: number }; cached: number; fetched: number; errors: EvaluateError[] }
 
 export interface Settings { model: string; timeoutMs: number; maxFunctionTokens: number; concurrency: number; cacheDir: string; strict: boolean; ignoreNames: string[] }
+
+/** The shape users write under `settings.jev` in their ESLint config; every field is optional. */
+export type JevSettings = Partial<Settings>;

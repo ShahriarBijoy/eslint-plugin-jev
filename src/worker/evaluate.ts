@@ -13,7 +13,6 @@ const REQUEST_TOKEN_BUDGET = 28_000;
 
 export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): Promise<EvaluateResponse> {
   const res: EvaluateResponse = { answers: {}, usage: { input_tokens: 0, output_tokens: 0 }, cached: 0, fetched: 0, errors: [] };
-  const apiKey = "apiKey" in deps ? deps.apiKey : resolveApiKey(req.cwd);
   const cache = deps.cache ?? new JsonlCache(resolve(req.cwd, req.cacheDir));
   if (!deps.cache) await cache.load();
 
@@ -31,6 +30,9 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
   }
   if (!misses.length) return res;
 
+  // Only look up the key once we know a network call is actually needed: a fully cached run
+  // never touches the environment, .env, or the global config file.
+  const apiKey = "apiKey" in deps ? deps.apiKey : resolveApiKey(req.cwd);
   if (!apiKey) { res.errors.push({ kind: "no_key", message: "eslint-plugin-jev: TYPESAFE_API_KEY not set (env, .env, or ~/.config/jev/config.json). Jev rules are skipped." }); return res; }
   const client: JevClient = deps.client ?? (new TypeSafeClient({ apiKey, defaultModel: req.model, timeout: Math.max(1000, req.timeoutMs), logLevel: "off" }) as unknown as JevClient);
 
@@ -78,8 +80,11 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
       }
     }
   };
-  await Promise.all(Array.from({ length: Math.min(req.concurrency, misses.length) }, worker));
-  clearTimeout(timer);
+  try {
+    await Promise.all(Array.from({ length: Math.min(req.concurrency, misses.length) }, worker));
+  } finally {
+    clearTimeout(timer);
+  }
   return res;
 }
 
@@ -93,8 +98,7 @@ function classify(err: unknown, name: string, timeoutMs: number): Omit<EvaluateE
   if (e?.status === 429) return { kind: "rate_limit", message: `${name}: TypeSafe rate limit (429) after retries.` };
   if (e?.status === 400 && /max_tokens_exceeded|too large|token/i.test(JSON.stringify(e.body ?? msg))) return { kind: "too_large", message: `${name}: request exceeds the model's token limit.` };
   if (typeof e?.status === "number") return { kind: "api", message: `${name}: TypeSafe API error ${e.status}: ${msg}` };
-  // Transport failures (DNS/connection refused/etc.) mean the API is unreachable for every unit
-  // in the file, not just this one, so they are also fatal.
-  if (e?.name === "APITimeoutError" || e?.name === "APIConnectionError") return { kind: "transport", message: `could not reach api.typesafe.ai (${msg}).`, fatal: true };
+  // Transport failures (DNS/connection refused/etc.) and anything else unclassified mean the API
+  // is unreachable for every unit in the file, not just this one, so they are also fatal.
   return { kind: "transport", message: `could not reach api.typesafe.ai (${msg}).`, fatal: true };
 }

@@ -31,4 +31,14 @@ describe("resolveApiKey", () => {
     writeFileSync(join(cwd, ".env"), "export TYPESAFE_API_KEY=crlf\r\n");
     expect(resolveApiKey(cwd, {}, home)).toBe("crlf");
   });
+  it("strips an inline comment from an unquoted value", () => {
+    const { cwd, home } = dirs();
+    writeFileSync(join(cwd, ".env"), "TYPESAFE_API_KEY=abc # prod key\n");
+    expect(resolveApiKey(cwd, {}, home)).toBe("abc");
+  });
+  it("keeps a hash inside a quoted value", () => {
+    const { cwd, home } = dirs();
+    writeFileSync(join(cwd, ".env"), 'TYPESAFE_API_KEY="a#b"\n');
+    expect(resolveApiKey(cwd, {}, home)).toBe("a#b");
+  });
 });

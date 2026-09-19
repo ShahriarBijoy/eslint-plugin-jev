@@ -69,6 +69,39 @@ const selectThrowsRule = createJevRule<Record<string, never>>({
   report: () => {},
 });
 
+describe("option defaults merge explicitly (ESLint 9.0-9.14 compatibility)", () => {
+  it("threshold defaults to 0.8 when options are passed as {}", () => {
+    const linter = new Linter();
+    const messages = linter.verify(
+      "function maybeBad() { return 1; }",
+      {
+        files: ["**/*.ts"],
+        languageOptions: { parser: tsParser },
+        plugins: { jev: { rules: { "name-matches-body": rule } } },
+        rules: { "jev/name-matches-body": ["warn", {}] },
+      },
+      "file.ts",
+    );
+    expect(messages).toHaveLength(0);
+  });
+
+  it("an explicit threshold overrides just that key, keeping other defaults", () => {
+    const linter = new Linter();
+    const messages = linter.verify(
+      "function maybeBad() { return 1; }",
+      {
+        files: ["**/*.ts"],
+        languageOptions: { parser: tsParser },
+        plugins: { jev: { rules: { "name-matches-body": rule } } },
+        rules: { "jev/name-matches-body": ["warn", { threshold: 0.6 }] },
+      },
+      "file.ts",
+    );
+    const mismatchNoVerb = messages.filter((m) => m.messageId === "mismatchNoVerb");
+    expect(mismatchNoVerb).toHaveLength(1);
+  });
+});
+
 describe("session-level fatal/skipped reporting", () => {
   describe("shared fatal error", () => {
     beforeAll(() => {

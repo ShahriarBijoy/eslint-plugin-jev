@@ -71,7 +71,8 @@ src/users.ts
 ```
 
 `listUsers` is clean and is not reported. The `getUser` warning comes with a quick fix that renames
-it to `deleteUser`. In VS Code these are the same yellow squiggles you already have, in the same
+it to `deleteUser`. The suggestion renames the declaration only; use your editor's Rename Symbol to
+update call sites. In VS Code these are the same yellow squiggles you already have, in the same
 places, for a new kind of reason.
 
 You can run exactly this: [`examples/basic`](examples/basic) is a working project that lints the
@@ -175,11 +176,21 @@ settings: {
     maxFunctionTokens: 6000, // estimated at 4 chars/token; larger functions are skipped with a diagnostic
     concurrency: 6,          // parallel Jev requests per file
     cacheDir: "node_modules/.cache/eslint-plugin-jev",
-    strict: false,           // true: missing key or transport failure becomes a lint error
+    strict: false,           // true: a missing key or transport failure is reported as a lint problem at line 1, at the rule's configured severity
     ignoreNames: ["^use[A-Z]", "^on[A-Z]", "^handle[A-Z]", "^toJSON$"],  // regexes, for name-matches-body
   }
 }
 ```
+
+TypeScript users can type the block with `JevSettings` from the package.
+
+`strict` does not change severity. Under the recommended config the report is a warning; set the
+jev rules to `"error"` in your config if you want a missing key to fail CI. Without `strict`, the
+plugin prints one console warning per process and stays silent.
+
+The cache is keyed by the model id you configure. `jev-latest` answers stay cached after the alias
+moves; pin a version (for example `jev-1.13.0`) or delete `node_modules/.cache/eslint-plugin-jev`
+to refresh.
 
 `ignoreNames` exists because `useSomething`, `onSomething` and `toJSON` are named by convention
 rather than by what they do, and the model is right to find them odd.
@@ -235,6 +246,9 @@ probability rather than prose. It is documented at [docs.typesafe.ai](https://do
   sent to TypeSafe's API — name, signature, leading comment and body, one function at a time, no
   surrounding file. Without a key or a network it disables itself silently. Scope it away from
   anything you cannot send: `{ ignores: ["src/secrets/**"] }`.
+- **Not exhaustive about failures.** A function whose request hits a rate limit, the per-file
+  deadline, or the token budget is skipped without a diagnostic; only a missing or rejected key and
+  network failures are reported.
 - **Not an autofixer.** A judgment with a probability attached is not something to apply to your
   source automatically. `name-matches-body` offers a rename as a *suggestion* you accept by hand;
   nothing changes under `--fix`.

@@ -23,4 +23,4 @@ Object.assign(plugin.configs, {
 });
 
 export default plugin;
-export type { Settings } from "./types.js";
+export type { Settings, JevSettings } from "./types.js";

@@ -90,6 +90,26 @@ describe("evaluate", () => {
     expect(res.errors[0].message).not.toContain("k=");
     expect(res.errors[0].message).toBe("TypeSafe rejected the API key (HTTP 401). Check TYPESAFE_API_KEY.");
   });
+  it("reports a single fatal when two workers fail in the same tick", async () => {
+    const calls: unknown[] = [];
+    const client: JevClient = {
+      async systemOne(input) {
+        calls.push(input);
+        return Promise.reject(Object.assign(new Error("Unauthorized"), { status: 401 }));
+      },
+    };
+    const r = req({ concurrency: 2 });
+    r.units.push(
+      { id: "f2", name: "thirdUnit", state: { function: { name: "thirdUnit" } }, stateText: '{"function":{"name":"thirdUnit"}}', estimatedTokens: 10, questions: { "name-matches-body:main": { type: "noul", instructions: "q" } } },
+      { id: "f3", name: "fourthUnit", state: { function: { name: "fourthUnit" } }, stateText: '{"function":{"name":"fourthUnit"}}', estimatedTokens: 10, questions: { "name-matches-body:main": { type: "noul", instructions: "q" } } },
+    );
+    const res = await evaluate(r, { client, apiKey: "k" });
+    expect(res.errors).toHaveLength(1);
+    expect(res.errors[0]).not.toHaveProperty("unitId");
+    expect(res.errors[0].kind).toBe("api");
+    expect(calls.length).toBeLessThanOrEqual(2);
+  });
+
   it("reports a transport failure once as a file-level error", async () => {
     const calls: unknown[] = [];
     const client: JevClient = { async systemOne(input) { calls.push(input); throw Object.assign(new Error("ECONNREFUSED"), { name: "APIConnectionError" }); } };

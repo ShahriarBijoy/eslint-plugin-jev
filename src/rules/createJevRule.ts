@@ -51,7 +51,9 @@ export function createJevRule<O>(spec: JevRuleSpec<O>): Rule.RuleModule {
       messages: { ...spec.messages, unavailable: "eslint-plugin-jev: {{message}}", skippedTooLarge: "eslint-plugin-jev: `{{name}}` skipped, about {{tokens}} tokens exceeds settings.jev.maxFunctionTokens." },
     },
     create(context) {
-      const options = (context.options[0] ?? spec.defaultOptions[0]) as O;
+      // meta.defaultOptions merging only exists from ESLint 9.15; the peer range allows 9.0, so
+      // merge explicitly here instead of relying on the engine to do it.
+      const options = { ...spec.defaultOptions[0], ...((context.options[0] as object | undefined) ?? {}) } as O;
       let session: FileSession | undefined;
       let selected: FunctionUnit[] = [];
       let programError: Error | undefined;

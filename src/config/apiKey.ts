@@ -25,7 +25,13 @@ function readDotenv(file: string): Record<string, string> {
     if (eq < 0) continue;
     const key = line.slice(0, eq).trim().replace(/^export\s+/, "");
     let val = line.slice(eq + 1).trim();
-    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) val = val.slice(1, -1);
+    const quoted = (val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"));
+    if (quoted) {
+      val = val.slice(1, -1);
+    } else {
+      const hashIdx = val.indexOf(" #");
+      if (hashIdx >= 0) val = val.slice(0, hashIdx).trim();
+    }
     out[key] = val;
   }
   return out;

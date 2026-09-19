@@ -34,7 +34,8 @@ export async function getUser(id: string) {
 }
 ```
 
-The suggestion offered is **Rename to `deleteUser`**.
+The suggestion offered is **Rename to `deleteUser`**. The suggestion renames the declaration only;
+use your editor's Rename Symbol to update call sites.
 
 ```ts
 // Name says "validate", body writes to the database

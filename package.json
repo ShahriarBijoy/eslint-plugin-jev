@@ -2,6 +2,10 @@
   "name": "eslint-plugin-jev",
   "version": "0.0.0",
   "description": "ESLint rules that are plain-English questions, judged by TypeSafe's Jev model. Lint for meaning, not shape.",
+  "repository": { "type": "git", "url": "git+https://github.com/ShahriarBijoy/eslint-plugin-jev.git" },
+  "homepage": "https://github.com/ShahriarBijoy/eslint-plugin-jev#readme",
+  "bugs": { "url": "https://github.com/ShahriarBijoy/eslint-plugin-jev/issues" },
+  "author": "Shahriar Bijoy",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -45,6 +49,7 @@
     "ai"
   ],
   "license": "MIT",
+  "packageManager": "pnpm@10.17.1",
   "publishConfig": {
     "access": "public",
     "provenance": true

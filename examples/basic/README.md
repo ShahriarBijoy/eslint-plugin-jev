@@ -6,7 +6,7 @@ function that is fine.
 
 ```bash
 cd examples/basic
-npm install
+pnpm install              # or npm install
 cp .env.example .env     # then paste your key from https://console.typesafe.ai
 npm run lint
 ```
