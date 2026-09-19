@@ -1,0 +1,1 @@
+{ "getUser": { "name-matches-body:main": { "noul": 0.94 }, "name-matches-body:verb": { "choice": "delete", "probabilities": { "get": 0.05, "delete": 0.95 }, "confidence": 0.9 } } }
