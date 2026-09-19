@@ -33,6 +33,7 @@
     "changeset": "changeset",
     "release": "changeset publish",
     "smoke": "tsx scripts/live-smoke.ts",
+    "record:replay": "tsx scripts/record-replay.ts",
     "bench": "tsx bench/run.ts",
     "bench:report": "tsx bench/report.ts"
   },
