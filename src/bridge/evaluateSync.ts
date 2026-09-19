@@ -4,18 +4,24 @@ import { createSyncFn } from "synckit";
 import type { Answer, EvaluateError, EvaluateRequest, EvaluateResponse } from "../types.js";
 
 let syncFn: ((req: EvaluateRequest) => EvaluateResponse) | undefined;
-let currentTimeout = -1;
 
 export function evaluateSync(req: EvaluateRequest): EvaluateResponse {
-  if (process.env.JEV_FAKE_ANSWERS) return fake(req);
-  const timeout = req.timeoutMs + 2000;
-  if (!syncFn || currentTimeout !== timeout) {
-    const workerPath = fileURLToPath(new URL("./worker.js", import.meta.url));
-    syncFn = createSyncFn(workerPath, { timeout }) as (req: EvaluateRequest) => EvaluateResponse;
-    currentTimeout = timeout;
+  try {
+    if (process.env.JEV_FAKE_ANSWERS) return fake(req);
+    if (!syncFn) {
+      const workerPath = fileURLToPath(new URL("./worker.js", import.meta.url));
+      // synckit caches one sync function per worker path; the per-file deadline is
+      // enforced inside the worker, this timeout is only a safety net.
+      syncFn = createSyncFn(workerPath, { timeout: req.timeoutMs + 2000 }) as (req: EvaluateRequest) => EvaluateResponse;
+    }
+    return syncFn(req);
+  } catch (err) {
+    return workerError(err);
   }
-  try { return syncFn(req); }
-  catch (err) { return { answers: {}, usage: { input_tokens: 0, output_tokens: 0 }, cached: 0, fetched: 0, errors: [{ kind: "worker", message: (err as Error).message }] }; }
+}
+
+function workerError(err: unknown): EvaluateResponse {
+  return { answers: {}, usage: { input_tokens: 0, output_tokens: 0 }, cached: 0, fetched: 0, errors: [{ kind: "worker", message: (err as Error).message }] };
 }
 
 function fake(req: EvaluateRequest): EvaluateResponse {
