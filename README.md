@@ -163,8 +163,9 @@ gone obviously wrong, not that precision is 1.00 on your codebase. `comment-matc
 full report is in [`bench/results/latest.md`](bench/results/latest.md); the method is in
 [`bench/`](bench).
 
-Speed, from a live run on a 3-function file: **978 ms cold, 8 ms on the rerun**, because every
-answer is cached on disk by content hash. Only functions you edited are ever asked again.
+Speed, from a live run on a 3-function file: **934 ms cold and 13 ms on the rerun in the run
+recorded for the demo**, because every answer is cached on disk by content hash. Only functions you
+edited are ever asked again.
 
 ## Settings
 
@@ -237,22 +238,31 @@ the linter once so you see real output.
 Set up eslint-plugin-jev in this repository.
 
 1. Detect the package manager from the lockfile: pnpm-lock.yaml means pnpm,
-   yarn.lock means yarn, package-lock.json means npm. Default to npm.
-2. Install eslint-plugin-jev as a dev dependency. If the repository contains any
-   .ts files, install @typescript-eslint/parser as a dev dependency too.
-3. If eslint.config.js, eslint.config.mjs or eslint.config.ts exists, add
+   yarn.lock means yarn, otherwise npm.
+2. Install eslint-plugin-jev as a dev dependency, plus eslint (^9 or ^10) if
+   the repository does not already have it. If the repository contains any
+   .ts files, also install @typescript-eslint/parser as a dev dependency.
+3. If eslint.config.js, .mjs, .cjs or .ts exists, add
    `import jev from "eslint-plugin-jev";` at the top and spread
-   `...jev.configs.recommended` after the existing entries. If none exists,
-   create eslint.config.js and put the TypeScript parser block first:
-   { files: ["**/*.ts"], languageOptions: { parser: tsParser } }
-4. If I gave you a key, append TYPESAFE_API_KEY=<key> to .env. If I did not,
-   add the line TYPESAFE_API_KEY= to .env.example instead and tell me to get a
-   key from https://console.typesafe.ai.
+   `...jev.configs.recommended` after the existing entries (use `require`
+   and `module.exports` instead if the file is CommonJS). If none exists,
+   create eslint.config.mjs containing:
+     import jev from "eslint-plugin-jev";
+     export default [...jev.configs.recommended];
+   Only if the repository has .ts files, also add
+   `import tsParser from "@typescript-eslint/parser";` and put
+   `{ files: ["**/*.ts"], languageOptions: { parser: tsParser } }` before
+   the spread.
+4. If the user gave you a key, append TYPESAFE_API_KEY=<key> to .env in the
+   directory ESLint runs from (normally the repository root). Otherwise add
+   TYPESAFE_API_KEY= to .env.example and tell the user to get a key at
+   https://console.typesafe.ai and put it in .env.
 5. Make sure .env is listed in .gitignore. Add it if it is missing.
-6. Run `npx eslint <one source file>` and report the warnings verbatim.
+6. Run `npx eslint <one source file>` and paste the warnings verbatim. If it
+   prints nothing and no key was given, say the rules are inactive until a
+   key is set.
 7. Never commit .env. Never print the key.
-
-Report what you changed in five lines.
+8. Report what you changed in five lines.
 ```
 
 The same text lives in [`docs/agent-setup.md`](docs/agent-setup.md), and the

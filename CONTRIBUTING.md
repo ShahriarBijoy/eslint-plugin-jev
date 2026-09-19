@@ -74,7 +74,8 @@ re-record it after changing the plugin, a rule, or an example file:
 pnpm build && pnpm record:replay   # needs TYPESAFE_API_KEY in .env, same as pnpm smoke/bench
 ```
 
-Commit the regenerated `site/replay.json` along with your change.
+Commit the regenerated `site/replay.json` along with your change. Check that the `orders` example is
+still flagged by `name-matches-body`; it recorded at P=0.81 against a 0.80 threshold.
 
 ## Adding a rule
 

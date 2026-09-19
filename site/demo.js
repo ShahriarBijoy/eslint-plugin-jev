@@ -440,17 +440,42 @@
     demoNote.textContent = "The demo replays a recorded run. Nothing on this page calls the API.";
   }
 
+  var MONTHS = ["January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"];
+
+  /* Formats the date part of an ISO string directly, so the calendar day shown
+     never shifts with the viewer's timezone (a `new Date(iso)` + toLocaleDateString
+     would render a different day for viewers west of UTC late in the day). */
+  function formatRecordedDate(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso));
+    if (!m) return String(iso);
+    var year = Number(m[1]);
+    var month = Number(m[2]);
+    var day = Number(m[3]);
+    if (!month || month < 1 || month > 12) return String(iso);
+    return MONTHS[month - 1] + " " + day + ", " + year;
+  }
+
+  function updateHeroStats(json) {
+    var usersExample = (json.examples || []).filter(function (ex) { return ex.id === "users"; })[0];
+    if (!usersExample) return;
+    var bad = usersExample.variants && usersExample.variants.bad;
+    if (!bad) return;
+    var coldEl = byId("heroColdMs");
+    var warmEl = byId("heroWarmMs");
+    if (coldEl && typeof bad.coldMs === "number") coldEl.textContent = bad.coldMs + " ms";
+    if (warmEl && typeof bad.warmMs === "number") warmEl.textContent = bad.warmMs + " ms";
+  }
+
   function init(json) {
     data = json;
     buildTabs();
     wireHovercard();
     runBtn.addEventListener("click", runLint);
     fixBtn.addEventListener("click", toggleFix);
+    updateHeroStats(json);
 
-    var when = new Date(data.recordedAt);
-    var date = isNaN(when.getTime())
-      ? String(data.recordedAt)
-      : when.toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" });
+    var date = formatRecordedDate(data.recordedAt);
     demoNote.textContent =
       "Recorded from a real run on " + date + " with " + data.model +
       ". Nothing on this page calls the API.";
