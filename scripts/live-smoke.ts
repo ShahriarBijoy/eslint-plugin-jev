@@ -5,9 +5,25 @@ let plugin: typeof import("../dist/index.js").default;
 try { plugin = (await import("../dist/index.js")).default; }
 catch { console.error("dist/ not found. Run `pnpm build` first."); process.exit(1); }
 
-const provider = process.env.JEV_PROVIDER === "openrouter" ? "openrouter" : "typesafe";
-const requiredEnvVar = provider === "openrouter" ? "OPENROUTER_API_KEY" : "TYPESAFE_API_KEY";
-if (!process.env[requiredEnvVar]) { console.error(`Set ${requiredEnvVar} (JEV_PROVIDER=${provider})`); process.exit(1); }
+const VALID_PROVIDERS = ["typesafe", "openrouter", "auto"] as const;
+type SmokeProvider = (typeof VALID_PROVIDERS)[number];
+
+const rawProvider = process.env.JEV_PROVIDER;
+let provider: SmokeProvider;
+if (!rawProvider) {
+  provider = "typesafe";
+} else if ((VALID_PROVIDERS as readonly string[]).includes(rawProvider)) {
+  provider = rawProvider as SmokeProvider;
+} else {
+  console.error(`JEV_PROVIDER must be typesafe, openrouter or auto (got "${rawProvider}")`);
+  process.exit(1);
+}
+
+const tsKey = process.env.TYPESAFE_API_KEY;
+const orKey = process.env.OPENROUTER_API_KEY;
+if (provider === "typesafe" && !tsKey) { console.error(`Set TYPESAFE_API_KEY (JEV_PROVIDER=${provider})`); process.exit(1); }
+if (provider === "openrouter" && !orKey) { console.error(`Set OPENROUTER_API_KEY (JEV_PROVIDER=${provider})`); process.exit(1); }
+if (provider === "auto" && !tsKey && !orKey) { console.error(`Set TYPESAFE_API_KEY or OPENROUTER_API_KEY (JEV_PROVIDER=${provider})`); process.exit(1); }
 delete process.env.JEV_FAKE_ANSWERS;
 const eslint = new ESLint({
   overrideConfigFile: true,

@@ -156,7 +156,8 @@ echo 'TYPESAFE_API_KEY=...' &gt;&gt; .env                    # get a key from th
 # echo 'OPENROUTER_API_KEY=...' &gt;&gt; .env                # alternative: a key from https://openrouter.ai/keys</code></pre>
       </figure>
       <p class="aside">With both keys set, TypeSafe is used unless <code>settings.jev.provider</code>
-        says otherwise.</p>
+        says otherwise; with neither set, the rules stay off and print one warning naming both
+        <code>TYPESAFE_API_KEY</code> and <code>OPENROUTER_API_KEY</code>.</p>
 
       <figure class="snippet">
         <figcaption><span class="snippet-name">eslint.config.js</span>
@@ -315,7 +316,7 @@ export default defineConfig([
    Otherwise add both TYPESAFE_API_KEY= and OPENROUTER_API_KEY= to
    .env.example, and tell the user to get a TypeSafe key at
    https://console.typesafe.ai or an OpenRouter key at https://openrouter.ai/keys,
-   then put it in .env.
+   then put that key in .env.
 5. Make sure .env is listed in .gitignore. Add it if it is missing.
 6. Run `npx eslint &lt;one source file&gt;` and paste the warnings verbatim. If it
    prints nothing and no key was given, say the rules are inactive until a

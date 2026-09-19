@@ -26,7 +26,9 @@ echo 'TYPESAFE_API_KEY=...' >> .env                    # get a key from the Type
 # echo 'OPENROUTER_API_KEY=...' >> .env                # alternative: a key from https://openrouter.ai/keys
 ```
 
-With both keys set, TypeSafe is used unless `settings.jev.provider` says otherwise.
+With both keys set, TypeSafe is used unless `settings.jev.provider` says otherwise; with neither
+set, the rules stay off and print one warning naming both `TYPESAFE_API_KEY` and
+`OPENROUTER_API_KEY`.
 
 The package is scoped because npm reserves unscoped names this close to `eslint-plugin-jest`. Rule ids are still `jev/name-matches-body` and friends.
 
@@ -273,7 +275,7 @@ Set up eslint-plugin-jev in this repository.
    Otherwise add both TYPESAFE_API_KEY= and OPENROUTER_API_KEY= to
    .env.example, and tell the user to get a TypeSafe key at
    https://console.typesafe.ai or an OpenRouter key at https://openrouter.ai/keys,
-   then put it in .env.
+   then put that key in .env.
 5. Make sure .env is listed in .gitignore. Add it if it is missing.
 6. Run `npx eslint <one source file>` and paste the warnings verbatim. If it
    prints nothing and no key was given, say the rules are inactive until a

@@ -31,7 +31,7 @@ Set up eslint-plugin-jev in this repository.
    Otherwise add both TYPESAFE_API_KEY= and OPENROUTER_API_KEY= to
    .env.example, and tell the user to get a TypeSafe key at
    https://console.typesafe.ai or an OpenRouter key at https://openrouter.ai/keys,
-   then put it in .env.
+   then put that key in .env.
 5. Make sure .env is listed in .gitignore. Add it if it is missing.
 6. Run `npx eslint <one source file>` and paste the warnings verbatim. If it
    prints nothing and no key was given, say the rules are inactive until a
