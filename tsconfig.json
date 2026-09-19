@@ -5,5 +5,6 @@
     "outDir": "dist", "rootDir": ".", "types": ["node", "vitest/globals"], "noEmit": true,
     "ignoreDeprecations": "6.0"
   },
-  "include": ["src", "tests", "bench", "scripts", "tsup.config.ts", "vitest.config.ts"]
+  "include": ["src", "tests", "bench", "scripts", "tsup.config.ts", "vitest.config.ts"],
+  "exclude": ["tests/fixtures"]
 }
