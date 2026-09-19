@@ -1,4 +1,9 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createOpenRouterClient, openRouterModelId } from "../../src/worker/openrouter.js";
+import { evaluate } from "../../src/worker/evaluate.js";
+import type { EvaluateRequest } from "../../src/types.js";
 
 describe("openRouterModelId", () => {
   it("prefixes a bare model id with typesafe/", () => {
@@ -66,5 +71,27 @@ describe("createOpenRouterClient", () => {
     const controller = new AbortController();
     await expect(client.systemOne({ state: {}, questions: {}, model: "jev-latest" }, { signal: controller.signal }))
       .rejects.toThrow("ECONNREFUSED");
+  });
+});
+
+describe("evaluate() end-to-end abort through the real OpenRouter client", () => {
+  afterEach(() => { vi.unstubAllGlobals(); });
+
+  it("reports a timeout (not a fatal transport error) when the per-file deadline aborts an in-flight request, and does not hang", async () => {
+    // Never resolves on its own; only rejects once evaluate()'s per-file deadline aborts the signal
+    // it was given, mirroring how a real fetch behaves when its AbortSignal fires mid-request.
+    const fetchMock = vi.fn((_url: string, init: RequestInit) => new Promise((_resolve, reject) => {
+      const signal = init.signal as AbortSignal;
+      signal.addEventListener("abort", () => reject(Object.assign(new Error("aborted"), { name: "AbortError" })));
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+    const req: EvaluateRequest = {
+      filename: "a.ts", cwd: process.cwd(), model: "jev-latest", timeoutMs: 50, concurrency: 1,
+      cacheDir: mkdtempSync(join(tmpdir(), "jevor-")), maxFunctionTokens: 6000, provider: "openrouter",
+      units: [{ id: "f0", name: "getUser", state: { function: { name: "getUser" } }, stateText: '{"function":{"name":"getUser"}}', estimatedTokens: 10,
+        questions: { main: { type: "noul", instructions: "q" } } }],
+    };
+    const res = await evaluate(req, { apiKey: undefined, openrouterApiKey: "k" });
+    expect(res.errors).toEqual([{ unitId: "f0", kind: "timeout", message: expect.any(String) }]);
   });
 });

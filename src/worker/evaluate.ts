@@ -17,13 +17,19 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
   const cache = deps.cache ?? new JsonlCache(resolve(req.cwd, req.cacheDir));
   if (!deps.cache) await cache.load();
 
-  // The cache is namespaced by the backend that actually answers ("typesafe" or "openrouter"),
-  // never by the raw "auto" setting, so "auto" and an explicit "typesafe" share answers and an
-  // OpenRouter answer is never served to TypeSafe. That identity has to be known before the cache
-  // pass, so key resolution happens up front now rather than only once a miss demands a network call.
-  const tsKey = "apiKey" in deps ? deps.apiKey : resolveApiKey(req.cwd);
-  const orKey = "openrouterApiKey" in deps ? deps.openrouterApiKey : resolveOpenRouterKey(req.cwd);
-  const { backend, apiKey } = resolveBackend(req.provider, tsKey, orKey);
+  // Only look up a key when its absence would change something we need right now. For an explicit
+  // "typesafe" or "openrouter" provider the backend is fixed by settings alone, so key lookup waits
+  // until after the cache pass below — a fully cached run never touches the environment, .env, or
+  // the global config file. "auto" is the one case whose backend identity depends on which key
+  // exists (so the cache can be namespaced correctly), so it alone must probe here, and it
+  // short-circuits: the OpenRouter key is only checked if the TypeSafe key is absent.
+  let tsKey: string | undefined;
+  let orKey: string | undefined;
+  if (req.provider === "auto") {
+    tsKey = "apiKey" in deps ? deps.apiKey : resolveApiKey(req.cwd);
+    if (!tsKey) orKey = "openrouterApiKey" in deps ? deps.openrouterApiKey : resolveOpenRouterKey(req.cwd);
+  }
+  const backend = resolveBackend(req.provider, tsKey, orKey).backend;
 
   // 1. Serve everything possible from cache, collect misses per unit.
   const misses: EvaluateUnit[] = [];
@@ -38,6 +44,12 @@ export async function evaluate(req: EvaluateRequest, deps: EvaluateDeps = {}): P
     if (Object.keys(missing).length) misses.push({ ...unit, questions: missing });
   }
   if (!misses.length) return res;
+
+  // A network call is now unavoidable. Explicit providers deferred their key lookup until now;
+  // "auto" already resolved whichever key(s) it needed above, so this is a no-op for it.
+  if (req.provider === "typesafe") tsKey = "apiKey" in deps ? deps.apiKey : resolveApiKey(req.cwd);
+  if (req.provider === "openrouter") orKey = "openrouterApiKey" in deps ? deps.openrouterApiKey : resolveOpenRouterKey(req.cwd);
+  const { apiKey } = resolveBackend(req.provider, tsKey, orKey);
 
   const NO_KEY_HINT = "(env, .env, or ~/.config/jev/config.json). Jev rules are skipped.";
   if (!apiKey) {

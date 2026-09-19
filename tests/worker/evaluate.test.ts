@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { evaluate, type JevClient } from "../../src/worker/evaluate.js";
 import { JsonlCache } from "../../src/worker/cache.js";
 import type { EvaluateRequest } from "../../src/types.js";
+import * as apiKeyModule from "../../src/config/apiKey.js";
 
 function req(overrides: Partial<EvaluateRequest> = {}): EvaluateRequest {
   return {
@@ -187,6 +188,40 @@ describe("evaluate", () => {
       expect(res.errors).toEqual([]);
       expect(res.cached).toBe(3);
       expect(res.answers.f0["name-matches-body:main"]).toEqual({ noul: 0.9 });
+    });
+
+    it("provider: typesafe resolves no key at all before the cache pass (a fully cached run never probes the environment)", async () => {
+      const r = req({ provider: "typesafe" });
+      const cache = new JsonlCache(r.cacheDir); await cache.load();
+      await evaluate(r, { client: fakeClient(), apiKey: "k", openrouterApiKey: undefined, cache });
+      const tsSpy = vi.spyOn(apiKeyModule, "resolveApiKey");
+      const orSpy = vi.spyOn(apiKeyModule, "resolveOpenRouterKey");
+      const calls: unknown[] = [];
+      // Deliberately omit apiKey/openrouterApiKey from deps: if evaluate() resolved either key
+      // before finding the run fully cached, one of these spies would be called.
+      const res = await evaluate(r, { client: fakeClient(calls), cache });
+      expect(calls).toHaveLength(0);
+      expect(res.errors).toEqual([]);
+      expect(res.cached).toBe(3);
+      expect(tsSpy).not.toHaveBeenCalled();
+      expect(orSpy).not.toHaveBeenCalled();
+      tsSpy.mockRestore(); orSpy.mockRestore();
+    });
+
+    it("provider: openrouter resolves no key at all before the cache pass", async () => {
+      const r = req({ provider: "openrouter" });
+      const cache = new JsonlCache(r.cacheDir); await cache.load();
+      await evaluate(r, { client: fakeClient(), apiKey: undefined, openrouterApiKey: "k", cache });
+      const tsSpy = vi.spyOn(apiKeyModule, "resolveApiKey");
+      const orSpy = vi.spyOn(apiKeyModule, "resolveOpenRouterKey");
+      const calls: unknown[] = [];
+      const res = await evaluate(r, { client: fakeClient(calls), cache });
+      expect(calls).toHaveLength(0);
+      expect(res.errors).toEqual([]);
+      expect(res.cached).toBe(3);
+      expect(tsSpy).not.toHaveBeenCalled();
+      expect(orSpy).not.toHaveBeenCalled();
+      tsSpy.mockRestore(); orSpy.mockRestore();
     });
 
     it("integration: a real OpenRouter 401 (via stubbed fetch) becomes one fatal error naming OPENROUTER_API_KEY", async () => {
