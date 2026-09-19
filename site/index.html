@@ -41,8 +41,8 @@
       &mdash; judged by TypeSafe&rsquo;s Jev and thresholded in your ESLint config.</p>
     <div class="cta-row">
       <a class="btn btn-accent" href="#demo">Try the demo</a>
-      <button class="btn btn-quiet btn-mono copy" type="button" data-copy-text="npm i -D eslint-plugin-jev">
-        <span class="copy-label">npm i -D eslint-plugin-jev</span>
+      <button class="btn btn-quiet btn-mono copy" type="button" data-copy-text="npm i -D @shahriarbijoy/eslint-plugin-jev">
+        <span class="copy-label">npm i -D @shahriarbijoy/eslint-plugin-jev</span>
       </button>
     </div>
     <dl class="stats">
@@ -151,7 +151,7 @@
         <figcaption><span class="snippet-name">Terminal</span>
           <button class="btn btn-tiny copy" type="button" data-copy-from="snip-install"><span class="copy-label">Copy</span></button>
         </figcaption>
-        <pre><code id="snip-install">npm i -D eslint-plugin-jev @typescript-eslint/parser   # only if you lint TypeScript
+        <pre><code id="snip-install">npm i -D @shahriarbijoy/eslint-plugin-jev @typescript-eslint/parser   # only if you lint TypeScript
 echo 'TYPESAFE_API_KEY=...' &gt;&gt; .env                    # get a key from the TypeSafe console: https://console.typesafe.ai</code></pre>
       </figure>
 
@@ -162,7 +162,7 @@ echo 'TYPESAFE_API_KEY=...' &gt;&gt; .env                    # get a key from th
         <pre><code id="snip-config">// eslint.config.js
 import { defineConfig } from "eslint/config";
 import tsParser from "@typescript-eslint/parser";
-import jev from "eslint-plugin-jev";
+import jev from "@shahriarbijoy/eslint-plugin-jev";
 
 export default defineConfig([
   { files: ["**/*.ts"], languageOptions: { parser: tsParser } }, // drop this line for plain JavaScript
@@ -285,15 +285,15 @@ export default defineConfig([
 
 1. Detect the package manager from the lockfile: pnpm-lock.yaml means pnpm,
    yarn.lock means yarn, otherwise npm.
-2. Install eslint-plugin-jev as a dev dependency, plus eslint (^9 or ^10) if
+2. Install @shahriarbijoy/eslint-plugin-jev as a dev dependency, plus eslint (^9 or ^10) if
    the repository does not already have it. If the repository contains any
    .ts files, also install @typescript-eslint/parser as a dev dependency.
 3. If eslint.config.js, .mjs, .cjs or .ts exists, add
-   `import jev from "eslint-plugin-jev";` at the top and spread
+   `import jev from "@shahriarbijoy/eslint-plugin-jev";` at the top and spread
    `...jev.configs.recommended` after the existing entries (use `require`
    and `module.exports` instead if the file is CommonJS). If none exists,
    create eslint.config.mjs containing:
-     import jev from "eslint-plugin-jev";
+     import jev from "@shahriarbijoy/eslint-plugin-jev";
      export default [...jev.configs.recommended];
    Only if the repository has .ts files, also add
    `import tsParser from "@typescript-eslint/parser";` and put

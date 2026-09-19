@@ -1,6 +1,6 @@
 import { defineConfig } from "eslint/config";
 import tsParser from "@typescript-eslint/parser";
-import jev from "eslint-plugin-jev";
+import jev from "@shahriarbijoy/eslint-plugin-jev";
 
 export default defineConfig([
   {

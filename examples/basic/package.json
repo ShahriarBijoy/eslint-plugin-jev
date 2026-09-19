@@ -10,6 +10,6 @@
   "devDependencies": {
     "@typescript-eslint/parser": "^8.70.0",
     "eslint": "^10.10.0",
-    "eslint-plugin-jev": "file:../.."
+    "@shahriarbijoy/eslint-plugin-jev": "file:../.."
   }
 }

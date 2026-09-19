@@ -1,5 +1,5 @@
 {
-  "name": "eslint-plugin-jev",
+  "name": "@shahriarbijoy/eslint-plugin-jev",
   "version": "0.1.0",
   "description": "ESLint rules that are plain-English questions, judged by TypeSafe's Jev model. Lint for meaning, not shape.",
   "repository": { "type": "git", "url": "git+https://github.com/ShahriarBijoy/eslint-plugin-jev.git" },

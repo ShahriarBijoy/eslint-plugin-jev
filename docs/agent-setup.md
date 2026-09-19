@@ -11,15 +11,15 @@ Set up eslint-plugin-jev in this repository.
 
 1. Detect the package manager from the lockfile: pnpm-lock.yaml means pnpm,
    yarn.lock means yarn, otherwise npm.
-2. Install eslint-plugin-jev as a dev dependency, plus eslint (^9 or ^10) if
+2. Install @shahriarbijoy/eslint-plugin-jev as a dev dependency, plus eslint (^9 or ^10) if
    the repository does not already have it. If the repository contains any
    .ts files, also install @typescript-eslint/parser as a dev dependency.
 3. If eslint.config.js, .mjs, .cjs or .ts exists, add
-   `import jev from "eslint-plugin-jev";` at the top and spread
+   `import jev from "@shahriarbijoy/eslint-plugin-jev";` at the top and spread
    `...jev.configs.recommended` after the existing entries (use `require`
    and `module.exports` instead if the file is CommonJS). If none exists,
    create eslint.config.mjs containing:
-     import jev from "eslint-plugin-jev";
+     import jev from "@shahriarbijoy/eslint-plugin-jev";
      export default [...jev.configs.recommended];
    Only if the repository has .ts files, also add
    `import tsParser from "@typescript-eslint/parser";` and put

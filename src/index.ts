@@ -9,7 +9,7 @@ const require = createRequire(import.meta.url);
 const { version } = require("../package.json") as { version: string };
 
 const plugin = {
-  meta: { name: "eslint-plugin-jev", version, namespace: "jev" },
+  meta: { name: "@shahriarbijoy/eslint-plugin-jev", version, namespace: "jev" },
   rules: { "name-matches-body": nameMatchesBody, "comment-matches-code": commentMatchesCode, "helpful-error-message": helpfulErrorMessage, check },
   configs: {} as { recommended: Linter.Config[] },
 } satisfies ESLint.Plugin & { configs: { recommended: Linter.Config[] } };
