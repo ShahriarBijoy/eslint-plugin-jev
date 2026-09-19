@@ -14,4 +14,17 @@ describe("resolveSettings", () => {
     expect(resolveSettings({ concurrency: 0 }).concurrency).toBe(1);
     expect(resolveSettings({ concurrency: 99 }).concurrency).toBe(16);
   });
+  it("rejects zero or negative numeric settings", () => {
+    expect(resolveSettings({ timeoutMs: -100, maxFunctionTokens: 0 }).timeoutMs).toBe(8000);
+    expect(resolveSettings({ timeoutMs: -100, maxFunctionTokens: 0 }).maxFunctionTokens).toBe(6000);
+  });
+  it("rounds concurrency to integer before clamping", () => {
+    expect(resolveSettings({ concurrency: 2.7 }).concurrency).toBe(3);
+  });
+  it("validates ignoreNames patterns for regex compilability", () => {
+    expect(resolveSettings({ ignoreNames: ["^ok", "(unclosed"] }).ignoreNames).toEqual(["^ok"]);
+  });
+  it("allows empty ignoreNames array from user", () => {
+    expect(resolveSettings({ ignoreNames: [] }).ignoreNames).toEqual([]);
+  });
 });

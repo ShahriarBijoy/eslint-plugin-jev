@@ -26,4 +26,9 @@ describe("resolveApiKey", () => {
     const { cwd, home } = dirs();
     expect(resolveApiKey(cwd, {}, home)).toBeUndefined();
   });
+  it("handles CRLF line endings in .env with export prefix", () => {
+    const { cwd, home } = dirs();
+    writeFileSync(join(cwd, ".env"), "export TYPESAFE_API_KEY=crlf\r\n");
+    expect(resolveApiKey(cwd, {}, home)).toBe("crlf");
+  });
 });
