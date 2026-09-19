@@ -1,0 +1,15 @@
+{
+  "name": "eslint-plugin-jev-example-basic",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Smallest working setup for eslint-plugin-jev.",
+  "scripts": {
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@typescript-eslint/parser": "^8.70.0",
+    "eslint": "^10.10.0",
+    "eslint-plugin-jev": "file:../.."
+  }
+}
