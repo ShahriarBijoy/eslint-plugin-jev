@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>eslint-plugin-jev — Lint for meaning</title>
+<meta name="description" content="ESLint rules that are plain-English questions about each function, judged by TypeSafe's Jev. A recorded run of the real plugin.">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23f0a020'/%3E%3Cpath d='M9 20h14' stroke='%23231a08' stroke-width='3' stroke-linecap='round'/%3E%3Cpath d='M11 11h10' stroke='%23231a08' stroke-width='3' stroke-linecap='round' opacity='.45'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&amp;display=swap">
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a class="wordmark" href="#top">eslint-plugin-jev</a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#demo">Demo</a>
+      <a href="#install">Install</a>
+      <a href="#rules">Rules</a>
+      <a href="#agent">Agent setup</a>
+      <a href="https://github.com/ShahriarBijoy/eslint-plugin-jev">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- Hero -->
+<section class="hero" id="top">
+  <div class="wrap">
+    <p class="eyebrow">ESLint plugin</p>
+    <h1>Lint for meaning.</h1>
+    <p class="lede">Rules that are plain-English questions about each function &mdash; does the name
+      promise what the body does, does the comment still hold, would this error message help anyone
+      &mdash; judged by TypeSafe&rsquo;s Jev and thresholded in your ESLint config.</p>
+    <div class="cta-row">
+      <a class="btn btn-accent" href="#demo">Try the demo</a>
+      <button class="btn btn-quiet btn-mono copy" type="button" data-copy-text="npm i -D eslint-plugin-jev">
+        <span class="copy-label">npm i -D eslint-plugin-jev</span>
+      </button>
+    </div>
+    <dl class="stats">
+      <div class="stat"><dt>Cold run</dt><dd>978 ms</dd></div>
+      <div class="stat"><dt>Same file again</dt><dd>8 ms</dd></div>
+      <div class="stat"><dt>10-case seed bench</dt><dd>$0.0002</dd></div>
+    </dl>
+    <p class="stats-note">Three functions, one live run, cache on disk.
+      <a href="https://github.com/ShahriarBijoy/eslint-plugin-jev/blob/main/bench/results/latest.md">Full bench numbers</a>.</p>
+  </div>
+</section>
+
+<!-- Demo -->
+<section class="section" id="demo">
+  <div class="wrap">
+    <header class="section-head">
+      <p class="eyebrow">Demo</p>
+      <h2>A recording of a real run</h2>
+      <p class="lede">Every warning below came out of the plugin against the live model. Pick an
+        example, run it, then fix it and run it again.</p>
+    </header>
+
+    <div class="demo" id="demoRoot">
+      <div class="demo-bar">
+        <div class="tabs" id="tabs" role="tablist" aria-label="Examples"></div>
+        <div class="demo-actions">
+          <button class="btn btn-quiet" type="button" id="fixBtn" aria-pressed="false">Fix it</button>
+          <button class="btn btn-accent" type="button" id="runBtn">Run eslint</button>
+        </div>
+      </div>
+
+      <div class="demo-grid">
+        <div class="panel code-panel" id="codePanel">
+          <div class="panel-head">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="panel-title" id="fileName">&nbsp;</span>
+          </div>
+          <div class="check-config" id="checkConfig" hidden>
+            <p class="check-config-label">The <code>jev/check</code> config used for this file</p>
+            <pre class="check-config-code"><code id="checkCode"></code></pre>
+          </div>
+          <div class="code-scroll" id="codeScroll">
+            <pre class="code"><code id="codeBody"></code></pre>
+          </div>
+          <div class="hovercard" id="hovercard" role="tooltip" hidden>
+            <p class="hc-rule" id="hcRule"></p>
+            <p class="hc-msg" id="hcMsg"></p>
+            <p class="hc-sug" id="hcSug" hidden></p>
+          </div>
+        </div>
+
+        <div class="panel out-panel">
+          <div class="panel-head">
+            <span class="dot" aria-hidden="true"></span>
+            <span class="panel-title">npx eslint</span>
+            <span class="panel-meta" id="runMeta"></span>
+          </div>
+          <div class="out" id="out" aria-live="polite" aria-atomic="true"></div>
+        </div>
+      </div>
+    </div>
+
+    <p class="demo-note" id="demoNote"></p>
+  </div>
+</section>
+
+<!-- How it works -->
+<section class="section" id="how">
+  <div class="wrap">
+    <header class="section-head">
+      <p class="eyebrow">How it works</p>
+      <h2>Three steps, no AST of your own</h2>
+    </header>
+    <div class="cards cards-3">
+      <article class="card">
+        <h3>Collect every function</h3>
+        <p>ESLint already walks the file, so the plugin takes each function&rsquo;s name, signature,
+          leading comment and body &mdash; one function at a time, no surrounding file.</p>
+      </article>
+      <article class="card">
+        <h3>Ask one question</h3>
+        <p>Every enabled rule&rsquo;s question is bundled into a single request per function, with
+          written true and false criteria. Jev answers with a probability instead of prose.</p>
+      </article>
+      <article class="card">
+        <h3>Threshold it in code</h3>
+        <p>The rule compares that probability to the threshold in your config and reports at the
+          name, the comment, or the throwing line. Answers are cached on disk by content hash.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- Install -->
+<section class="section" id="install">
+  <div class="wrap">
+    <header class="section-head">
+      <p class="eyebrow">Install</p>
+      <h2>Configure locally</h2>
+      <p class="lede">Two steps. The three built-in rules run at <code>warn</code>; with no key found
+        anywhere they produce no diagnostics at all and your editor behaves exactly as before.</p>
+    </header>
+
+    <div class="stack">
+      <figure class="snippet">
+        <figcaption><span class="snippet-name">Terminal</span>
+          <button class="btn btn-tiny copy" type="button" data-copy-from="snip-install"><span class="copy-label">Copy</span></button>
+        </figcaption>
+        <pre><code id="snip-install">npm i -D eslint-plugin-jev @typescript-eslint/parser   # only if you lint TypeScript
+echo 'TYPESAFE_API_KEY=...' &gt;&gt; .env                    # get a key from the TypeSafe console: https://console.typesafe.ai</code></pre>
+      </figure>
+
+      <figure class="snippet">
+        <figcaption><span class="snippet-name">eslint.config.js</span>
+          <button class="btn btn-tiny copy" type="button" data-copy-from="snip-config"><span class="copy-label">Copy</span></button>
+        </figcaption>
+        <pre><code id="snip-config">// eslint.config.js
+import { defineConfig } from "eslint/config";
+import tsParser from "@typescript-eslint/parser";
+import jev from "eslint-plugin-jev";
+
+export default defineConfig([
+  { files: ["**/*.ts"], languageOptions: { parser: tsParser } }, // drop this line for plain JavaScript
+  ...jev.configs.recommended,
+]);</code></pre>
+      </figure>
+    </div>
+
+    <div class="cards cards-2 install-notes">
+      <article class="card">
+        <h3>Where the key comes from</h3>
+        <p>Looked up in this order, first hit wins:</p>
+        <ol class="tight">
+          <li><code>TYPESAFE_API_KEY</code> in the environment</li>
+          <li><code>TYPESAFE_API_KEY</code> in a <code>.env</code> file in the project root</li>
+          <li><code>{ "apiKey": "..." }</code> in <code>~/.config/jev/config.json</code></li>
+        </ol>
+        <p>The key is read inside a worker thread and never appears in a diagnostic, a log line, or
+          the cache.</p>
+      </article>
+      <article class="card">
+        <h3>VS Code</h3>
+        <p>The ESLint extension runs a language server that does not inherit your shell&rsquo;s
+          environment, so a key exported in <code>.zshrc</code> will not reach it. That is why step
+          two writes the key to <code>.env</code>: the plugin reads <code>.env</code> from the
+          workspace root itself, so VS Code works with no extra configuration.</p>
+        <p>If you keep your key somewhere else, hand it to the server directly with
+          <code>{ "eslint.execArgv": ["--env-file=.env"] }</code> in
+          <code>.vscode/settings.json</code>.</p>
+      </article>
+    </div>
+
+    <details class="details">
+      <summary>Settings</summary>
+      <p class="details-intro">Everything below is optional. Put it under <code>settings.jev</code>
+        in any config object.</p>
+      <figure class="snippet">
+        <figcaption><span class="snippet-name">eslint.config.js</span>
+          <button class="btn btn-tiny copy" type="button" data-copy-from="snip-settings"><span class="copy-label">Copy</span></button>
+        </figcaption>
+        <pre><code id="snip-settings">settings: {
+  jev: {
+    model: "jev-latest",     // pin a version once thresholds are tuned
+    timeoutMs: 8000,         // per file, across all its functions; on timeout the file is skipped
+    maxFunctionTokens: 6000, // estimated at 4 chars/token; larger functions are skipped with a diagnostic
+    concurrency: 6,          // parallel Jev requests per file
+    cacheDir: "node_modules/.cache/eslint-plugin-jev",
+    strict: false,           // true: a missing key or transport failure is reported as a lint problem at line 1, at the rule's configured severity
+    ignoreNames: ["^use[A-Z]", "^on[A-Z]", "^handle[A-Z]", "^toJSON$"],  // regexes, for name-matches-body
+  }
+}</code></pre>
+      </figure>
+    </details>
+  </div>
+</section>
+
+<!-- Rules -->
+<section class="section" id="rules">
+  <div class="wrap">
+    <header class="section-head">
+      <p class="eyebrow">Rules</p>
+      <h2>Four questions</h2>
+      <p class="lede">The threshold is the probability at which a rule speaks up. Raise it to hear
+        less, lower it to hear more. Every message prints both the probability and the threshold, so
+        you tune from real output.</p>
+    </header>
+    <div class="cards cards-2">
+      <article class="card rule-card">
+        <h3><code>jev/name-matches-body</code></h3>
+        <p class="question">&ldquo;Does <code>function.name</code> promise a different action, object,
+          or result than <code>function.body</code> performs?&rdquo;</p>
+        <p class="rule-foot"><span class="pill">threshold 0.80</span>
+          <a href="https://github.com/ShahriarBijoy/eslint-plugin-jev/blob/main/docs/rules/name-matches-body.md">Rule docs</a></p>
+      </article>
+      <article class="card rule-card">
+        <h3><code>jev/comment-matches-code</code></h3>
+        <p class="question">&ldquo;Does <code>function.comment</code> describe behavior that
+          <code>function.body</code> does not have, or leave out a side effect that
+          <code>function.body</code> has?&rdquo;</p>
+        <p class="rule-foot"><span class="pill">threshold 0.80</span>
+          <a href="https://github.com/ShahriarBijoy/eslint-plugin-jev/blob/main/docs/rules/comment-matches-code.md">Rule docs</a></p>
+      </article>
+      <article class="card rule-card">
+        <h3><code>jev/helpful-error-message</code></h3>
+        <p class="question">&ldquo;Would a developer reading the error message in
+          <code>function.throws.&lt;id&gt;.message</code> in a log be unable to tell what went wrong
+          or what to check next?&rdquo;</p>
+        <p class="rule-foot"><span class="pill">threshold 0.85</span>
+          <a href="https://github.com/ShahriarBijoy/eslint-plugin-jev/blob/main/docs/rules/helpful-error-message.md">Rule docs</a></p>
+      </article>
+      <article class="card rule-card">
+        <h3><code>jev/check</code></h3>
+        <p class="question">Your own question, one sentence, asked of every function. The plugin
+          appends &ldquo;Judge only <code>function</code> in the state.&rdquo; and, unless you turn
+          it off, asks a second question to locate the offending line.</p>
+        <p class="rule-foot"><span class="pill">threshold 0.80</span>
+          <a href="https://github.com/ShahriarBijoy/eslint-plugin-jev/blob/main/docs/rules/check.md">Rule docs</a></p>
+      </article>
+    </div>
+    <p class="aside">Phrase your own question so that <strong>yes means the code is bad</strong>.
+      That is the only wording rule.</p>
+  </div>
+</section>
+
+<!-- Agent setup -->
+<section class="section" id="agent">
+  <div class="wrap">
+    <header class="section-head">
+      <p class="eyebrow">Agent setup</p>
+      <h2>Set up with an AI agent</h2>
+      <p class="lede">If you work with a coding agent, hand it this prompt instead of doing the
+        install by hand. It detects your package manager, edits the ESLint config in place, keeps
+        your key out of git, and runs the linter once so you see real output.</p>
+    </header>
+    <figure class="snippet snippet-prose">
+      <figcaption><span class="snippet-name">Prompt</span>
+        <button class="btn btn-tiny copy" type="button" data-copy-from="snip-agent"><span class="copy-label">Copy</span></button>
+      </figcaption>
+      <pre><code id="snip-agent">Set up eslint-plugin-jev in this repository.
+
+1. Detect the package manager from the lockfile: pnpm-lock.yaml means pnpm,
+   yarn.lock means yarn, package-lock.json means npm. Default to npm.
+2. Install eslint-plugin-jev as a dev dependency. If the repository contains any
+   .ts files, install @typescript-eslint/parser as a dev dependency too.
+3. If eslint.config.js, eslint.config.mjs or eslint.config.ts exists, add
+   `import jev from "eslint-plugin-jev";` at the top and spread
+   `...jev.configs.recommended` after the existing entries. If none exists,
+   create eslint.config.js and put the TypeScript parser block first:
+   { files: ["**/*.ts"], languageOptions: { parser: tsParser } }
+4. If I gave you a key, append TYPESAFE_API_KEY=&lt;key&gt; to .env. If I did not,
+   add the line TYPESAFE_API_KEY= to .env.example instead and tell me to get a
+   key from https://console.typesafe.ai.
+5. Make sure .env is listed in .gitignore. Add it if it is missing.
+6. Run `npx eslint &lt;one source file&gt;` and report the warnings verbatim.
+7. Never commit .env. Never print the key.
+
+Report what you changed in five lines.</code></pre>
+    </figure>
+    <p class="aside">The same text lives at <a href="./agent-setup.md">agent-setup.md</a>, and
+      <a href="./llms.txt">llms.txt</a> points an agent at the rest.</p>
+  </div>
+</section>
+
+<!-- What it is not -->
+<section class="section" id="limits">
+  <div class="wrap">
+    <header class="section-head">
+      <p class="eyebrow">Honesty</p>
+      <h2>What it is not</h2>
+    </header>
+    <ul class="limits">
+      <li><strong>Not for anything countable.</strong> Function length, cyclomatic complexity, unused
+        variables &mdash; a normal ESLint rule already does those, exactly, for free. Keep them.</li>
+      <li><strong>Not offline, and not private.</strong> It needs the network and a key, and the
+        functions it lints are sent to TypeSafe&rsquo;s API &mdash; name, signature, leading comment
+        and body, one function at a time, no surrounding file. Scope it away from anything you
+        cannot send.</li>
+      <li><strong>Not exhaustive about failures.</strong> A function whose request hits a rate limit,
+        the per-file deadline, or the token budget is skipped without a diagnostic; only a missing or
+        rejected key and network failures are reported.</li>
+      <li><strong>Not an autofixer.</strong> A judgment with a probability attached is not something
+        to apply to your source automatically. <code>name-matches-body</code> offers a rename as a
+        suggestion you accept by hand; nothing changes under <code>--fix</code>.</li>
+      <li><strong>Not a proof.</strong> It judges. That is why it defaults to <code>warn</code> and
+        prints the number it judged on.</li>
+    </ul>
+    <p class="aside">Input tokens are $0.042 per million and output is free, so a 200-function
+      repository costs well under a cent to lint cold, and nothing at all warm &mdash; the cache
+      means you only pay for functions you changed.</p>
+  </div>
+</section>
+
+</main>
+
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <p>Built on TypeSafe&rsquo;s Jev.</p>
+    <nav class="footer-links" aria-label="Footer">
+      <a href="https://github.com/ShahriarBijoy/eslint-plugin-jev">GitHub</a>
+      <a href="https://docs.typesafe.ai">TypeSafe docs</a>
+      <a href="https://github.com/ShahriarBijoy/eslint-plugin-jev/blob/main/LICENSE">MIT</a>
+    </nav>
+  </div>
+</footer>
+
+<script src="./demo.js"></script>
+</body>
+</html>
