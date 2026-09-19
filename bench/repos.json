@@ -1,0 +1,5 @@
+[
+  { "name": "zod", "url": "https://github.com/colinhacks/zod", "commit": "<pin at bench time>", "globs": ["src/**/*.ts"] },
+  { "name": "hono", "url": "https://github.com/honojs/hono", "commit": "<pin at bench time>", "globs": ["src/**/*.ts"] },
+  { "name": "excalidraw", "url": "https://github.com/excalidraw/excalidraw", "commit": "<pin at bench time>", "globs": ["packages/excalidraw/**/*.ts"] }
+]
