@@ -6,5 +6,6 @@
   "staleComment": { "comment-matches-code:main": { "noul": 0.88 } },
   "goodComment":  { "comment-matches-code:main": { "noul": 0.1 } },
   "saveOrder":    { "helpful-error-message:f0.t0": { "noul": 0.91 } },
-  "clearThrow":   { "helpful-error-message:f0.t0": { "noul": 0.05 } }
+  "clearThrow":   { "helpful-error-message:f0.t0": { "noul": 0.05 } },
+  "twoThrows":    { "helpful-error-message:f0.t0": { "noul": 0.95 }, "helpful-error-message:f0.t1": { "noul": 0.1 } }
 }

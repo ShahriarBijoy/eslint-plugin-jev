@@ -7,6 +7,8 @@ tester.run("comment-matches-code", rule, {
   valid: [
     { code: "/** Saves an order. */\nfunction goodComment() { repo.insert(); }" },
     { code: "function staleComment() { db.delete(); }" },                 // no comment: not asked
+    { code: "// eslint-disable-next-line no-console\nfunction staleComment() { db.delete(); }" },
+    { code: "/* Copyright 2026 Someone. MIT License. */\nfunction staleComment() { db.delete(); }" },
   ],
   invalid: [
     { code: "// Returns the cached profile\nfunction staleComment() { db.delete(); }",

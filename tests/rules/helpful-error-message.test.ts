@@ -11,5 +11,7 @@ tester.run("helpful-error-message", rule, {
   invalid: [
     { code: "function saveOrder() {\n  throw new Error(\"Error 42\");\n}",
       errors: [{ messageId: "unhelpful", data: { message: "Error 42", p: "0.91", threshold: "0.85" }, line: 2, column: 19 }] },
+    { code: "function twoThrows(x) {\n  if (!x) throw new Error(\"bad\");\n  throw new Error(`Expected a number but received ${typeof x}`);\n}",
+      errors: [{ messageId: "unhelpful", data: { message: "bad", p: "0.95", threshold: "0.85" }, line: 2 }] },
   ],
 });
