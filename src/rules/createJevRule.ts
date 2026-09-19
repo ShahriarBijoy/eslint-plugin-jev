@@ -1,6 +1,7 @@
 import type { Rule } from "eslint";
 import type { Answer, FunctionUnit, Question, Settings } from "../types.js";
 import { acquireSession, releaseSession, type FileSession } from "../session/fileSession.js";
+import { resolveSettings } from "../config/settings.js";
 
 export interface JevRuleSpec<O> {
   name: string; description: string; type: "problem" | "suggestion"; hasSuggestions?: boolean;
@@ -14,12 +15,25 @@ export const pct = (p: number): string => p.toFixed(2);
 
 let warnedOnce = false;
 
-function reportFatal(context: Rule.RuleContext, session: FileSession | undefined, message: string): void {
-  if (session?.settings.strict) {
+/** The shared transport/API fatal (e.g. no_key). Gated per-session: reported once per file, regardless of how many jev rules see it. */
+function reportTransportFatal(context: Rule.RuleContext, session: FileSession, message: string): void {
+  if (session.settings.strict) {
     if (!session.fatalReported) {
       session.fatalReported = true;
       context.report({ loc: { line: 1, column: 0 }, messageId: "unavailable", data: { message } });
     }
+  } else if (!warnedOnce) {
+    warnedOnce = true;
+    console.warn(message);
+  }
+}
+
+/** A bug in this specific rule's own callbacks (select/questions/report) or in acquiring the session. Never gated by the
+ * session's fatalReported flag: it is a distinct diagnostic from the transport fatal and must not be masked by it, nor mask it. */
+function reportRuleFailure(context: Rule.RuleContext, strict: boolean, ruleName: string, err: unknown): void {
+  const message = `rule ${ruleName} failed: ${(err as Error).message}`;
+  if (strict) {
+    context.report({ loc: { line: 1, column: 0 }, messageId: "unavailable", data: { message } });
   } else if (!warnedOnce) {
     warnedOnce = true;
     console.warn(message);
@@ -53,12 +67,20 @@ export function createJevRule<O>(spec: JevRuleSpec<O>): Rule.RuleModule {
           }
         },
         "Program:exit"() {
-          if (!session) return;
+          if (!session) {
+            // acquireSession itself threw in Program(): there is nothing to release, but the
+            // failure must still surface rather than being swallowed by the `!session` guard.
+            if (programError) {
+              const settings = resolveSettings((context.settings as { jev?: unknown })?.jev);
+              reportRuleFailure(context, settings.strict, spec.name, programError);
+            }
+            return;
+          }
           try {
             if (programError) throw programError;
             const res = session.result();
             const fatal = res.errors.find((e) => !e.unitId);
-            if (fatal) reportFatal(context, session, fatal.message);
+            if (fatal) reportTransportFatal(context, session, fatal.message);
             if (!session.skippedReported) {
               session.skippedReported = true;
               for (const s of session.skipped) context.report({ loc: s.loc, messageId: "skippedTooLarge", data: { name: s.name, tokens: String(s.estimatedTokens) } });
@@ -68,7 +90,7 @@ export function createJevRule<O>(spec: JevRuleSpec<O>): Rule.RuleModule {
               spec.report({ context, unit, options, settings: session.settings, answer: (qid) => session!.answer(spec.name, unit.id, qid) });
             }
           } catch (err) {
-            reportFatal(context, session, `rule ${spec.name} failed: ${(err as Error).message}`);
+            reportRuleFailure(context, session.settings.strict, spec.name, err);
           } finally { releaseSession(context); }
         },
       };

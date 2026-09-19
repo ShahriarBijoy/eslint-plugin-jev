@@ -61,6 +61,14 @@ const throwingRule = createJevRule<Record<string, never>>({
   report: () => { throw new Error("boom"); },
 });
 
+const selectThrowsRule = createJevRule<Record<string, never>>({
+  name: "select-throws", type: "problem", description: "rule whose select callback throws",
+  schema: [{ type: "object", additionalProperties: true }], defaultOptions: [{}], messages: {},
+  select: () => { throw new Error("select-boom"); },
+  questions: () => ({ main: { type: "noul", instructions: "q" } }),
+  report: () => {},
+});
+
 describe("session-level fatal/skipped reporting", () => {
   describe("shared fatal error", () => {
     beforeAll(() => {
@@ -105,6 +113,54 @@ describe("session-level fatal/skipped reporting", () => {
       const unavailable = messages.filter((m) => m.messageId === "unavailable");
       expect(unavailable).toHaveLength(1);
       expect(unavailable[0].message).toContain("boom");
+    }).not.toThrow();
+  });
+
+  describe("rule-local failures vs. the transport fatal", () => {
+    beforeAll(() => {
+      process.env.JEV_FAKE_ERRORS = JSON.stringify([{ kind: "no_key", message: "TYPESAFE_API_KEY not set" }]);
+    });
+    afterAll(() => {
+      delete process.env.JEV_FAKE_ERRORS;
+    });
+
+    it("a rule-local failure does not mask the transport fatal for other rules", () => {
+      const linter = new Linter();
+      const messages = linter.verify(
+        "function listUsers() { return db.users.findMany(); }",
+        {
+          files: ["**/*.ts"],
+          languageOptions: { parser: tsParser },
+          plugins: { jev: { rules: { throws: throwingRule, "name-matches-body": rule } } },
+          settings: { jev: { strict: true } },
+          rules: { "jev/throws": "error", "jev/name-matches-body": "error" },
+        },
+        "file.ts",
+      );
+      const unavailable = messages.filter((m) => m.messageId === "unavailable");
+      expect(unavailable).toHaveLength(2);
+      expect(unavailable.some((m) => m.message.includes("TYPESAFE_API_KEY"))).toBe(true);
+      expect(unavailable.some((m) => m.message.includes("boom"))).toBe(true);
+    });
+  });
+
+  it("a failing session construction is reported, not swallowed", () => {
+    const linter = new Linter();
+    expect(() => {
+      const messages = linter.verify(
+        "function whatever() { return 1; }",
+        {
+          files: ["**/*.ts"],
+          languageOptions: { parser: tsParser },
+          plugins: { jev: { rules: { "select-throws": selectThrowsRule } } },
+          settings: { jev: { strict: true } },
+          rules: { "jev/select-throws": "error" },
+        },
+        "file.ts",
+      );
+      const unavailable = messages.filter((m) => m.messageId === "unavailable");
+      expect(unavailable).toHaveLength(1);
+      expect(unavailable[0].message).toContain("select-boom");
     }).not.toThrow();
   });
 });
