@@ -53,3 +53,52 @@ describe("extractUnits", () => {
     expect(skipped.map((s) => s.name)).toContain("getUser");
   });
 });
+
+describe("leading comment attachment", () => {
+  it("does not attach a comment separated from the declaration by a blank line", () => {
+    const { units } = unitsOf(`/** Module header explaining the file. */
+
+function firstString(a: unknown) { return String(a); }`);
+    expect(units[0].comment).toBeUndefined();
+    expect(units[0].commentLoc).toBeUndefined();
+  });
+
+  it("attaches only the adjacent JSDoc when a module header also precedes it", () => {
+    const { units } = unitsOf(`/** Module header. */
+
+/** Coerces to a string. */
+function coerceString(a: unknown) { return String(a); }`);
+    expect(units[0].comment).toBe("Coerces to a string.");
+    expect(units[0].commentLoc!.start.line).toBe(3);
+  });
+
+  it("keeps a contiguous run of line comments together", () => {
+    const { units } = unitsOf(`// first line
+// second line
+function f() { return 1; }`);
+    expect(units[0].comment).toBe("first line second line");
+    expect(units[0].commentLoc!.start.line).toBe(1);
+  });
+
+  it("stops the line-comment run at a blank line", () => {
+    const { units } = unitsOf(`// detached note
+
+// attached note
+function f() { return 1; }`);
+    expect(units[0].comment).toBe("attached note");
+    expect(units[0].commentLoc!.start.line).toBe(3);
+  });
+});
+
+describe("object-literal property functions", () => {
+  it("gives them kind property so name rules can skip interface-dictated names", () => {
+    const { units } = unitsOf(`const crumb = { select: () => navigate("/tracker") };`);
+    expect(units[0].name).toBe("select");
+    expect(units[0].kind).toBe("property");
+  });
+
+  it("still treats class methods as methods", () => {
+    const { units } = unitsOf(`class S { remove(id: string) { return db.delete(id); } }`);
+    expect(units[0].kind).toBe("method");
+  });
+});

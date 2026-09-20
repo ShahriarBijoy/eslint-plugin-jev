@@ -80,7 +80,17 @@ export async function getUser(id: string) {
 | `suggestThreshold` | number, 0.5–1 | `0.7` | When the verb answer is less sure than this, you get the plain message `Name "x" does not match what the body does` and no rename. |
 
 Which functions are asked about at all is controlled by `settings.jev.ignoreNames` (see below).
-Functions exported as `export default` with no name are skipped.
+Functions exported as `export default` with no name are skipped, and so are **functions assigned to
+an object-literal key**:
+
+```ts
+const crumb = { label: "Tracker", select: () => navigate("/tracker") };
+```
+
+`select` here means "was selected" — the key is chosen by whatever interface consumes the object, so
+it is not a promise the author of the body made. Navigating is the right body. This is the same
+reasoning as the `^on[A-Z]` default below, and it cannot be expressed as a name pattern because the
+giveaway is the position, not the word. Class methods are still judged.
 
 ## Known false positives
 

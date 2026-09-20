@@ -1,14 +1,152 @@
 {
-  "getUser":   { "name-matches-body:main": { "noul": 0.94 }, "name-matches-body:verb": { "choice": "delete", "probabilities": { "get": 0.05, "delete": 0.95 }, "confidence": 0.9 }, "comment-matches-code:main": { "noul": 0.88 } },
-  "listUsers": { "name-matches-body:main": { "noul": 0.12 }, "name-matches-body:verb": { "choice": "find", "probabilities": { "find": 0.8 }, "confidence": 0.7 } },
-  "maybeBad":  { "name-matches-body:main": { "noul": 0.7 },  "name-matches-body:verb": { "choice": "other", "probabilities": { "other": 0.4 }, "confidence": 0.2 } },
-  "useThing":  { "name-matches-body:main": { "noul": 0.99 }, "name-matches-body:verb": { "choice": "delete", "probabilities": { "delete": 0.9 }, "confidence": 0.9 } },
-  "staleComment": { "comment-matches-code:main": { "noul": 0.88 } },
-  "goodComment":  { "comment-matches-code:main": { "noul": 0.1 } },
-  "saveOrder":    { "helpful-error-message:f0.t0": { "noul": 0.91 }, "helpful-error-message:f1.t0": { "noul": 0.91 } },
-  "clearThrow":   { "helpful-error-message:f0.t0": { "noul": 0.05 } },
-  "twoThrows":    { "helpful-error-message:f0.t0": { "noul": 0.95 }, "helpful-error-message:f0.t1": { "noul": 0.1 } },
-  "logsKey": { "check:no-secret-logging": { "noul": 0.97 }, "check:no-secret-logging:line": { "choice": "L002", "probabilities": { "L001": 0.1, "L002": 0.85, "none": 0.05 }, "confidence": 0.8 } },
-  "clean":   { "check:no-secret-logging": { "noul": 0.02 }, "check:no-secret-logging:line": { "choice": "none", "probabilities": { "none": 0.9 }, "confidence": 0.9 } },
-  "outOfRange": { "check:no-secret-logging": { "noul": 0.97 }, "check:no-secret-logging:line": { "choice": "L009", "probabilities": { "L009": 0.9 }, "confidence": 0.9 } }
+  "getUser": {
+    "name-matches-body:main": {
+      "noul": 0.94
+    },
+    "name-matches-body:verb": {
+      "choice": "delete",
+      "probabilities": {
+        "get": 0.05,
+        "delete": 0.95
+      },
+      "confidence": 0.9
+    },
+    "comment-matches-code:contradicts": {
+      "noul": 0.88
+    },
+    "comment-matches-code:hides": {
+      "noul": 0.05
+    }
+  },
+  "listUsers": {
+    "name-matches-body:main": {
+      "noul": 0.12
+    },
+    "name-matches-body:verb": {
+      "choice": "find",
+      "probabilities": {
+        "find": 0.8
+      },
+      "confidence": 0.7
+    }
+  },
+  "maybeBad": {
+    "name-matches-body:main": {
+      "noul": 0.7
+    },
+    "name-matches-body:verb": {
+      "choice": "other",
+      "probabilities": {
+        "other": 0.4
+      },
+      "confidence": 0.2
+    }
+  },
+  "useThing": {
+    "name-matches-body:main": {
+      "noul": 0.99
+    },
+    "name-matches-body:verb": {
+      "choice": "delete",
+      "probabilities": {
+        "delete": 0.9
+      },
+      "confidence": 0.9
+    }
+  },
+  "staleComment": {
+    "comment-matches-code:contradicts": {
+      "noul": 0.88
+    },
+    "comment-matches-code:hides": {
+      "noul": 0.05
+    }
+  },
+  "goodComment": {
+    "comment-matches-code:contradicts": {
+      "noul": 0.1
+    },
+    "comment-matches-code:hides": {
+      "noul": 0.05
+    }
+  },
+  "saveOrder": {
+    "helpful-error-message:f0.t0": {
+      "noul": 0.91
+    },
+    "helpful-error-message:f1.t0": {
+      "noul": 0.91
+    }
+  },
+  "clearThrow": {
+    "helpful-error-message:f0.t0": {
+      "noul": 0.05
+    }
+  },
+  "twoThrows": {
+    "helpful-error-message:f0.t0": {
+      "noul": 0.95
+    },
+    "helpful-error-message:f0.t1": {
+      "noul": 0.1
+    }
+  },
+  "logsKey": {
+    "check:no-secret-logging": {
+      "noul": 0.97
+    },
+    "check:no-secret-logging:line": {
+      "choice": "L002",
+      "probabilities": {
+        "L001": 0.1,
+        "L002": 0.85,
+        "none": 0.05
+      },
+      "confidence": 0.8
+    }
+  },
+  "clean": {
+    "check:no-secret-logging": {
+      "noul": 0.02
+    },
+    "check:no-secret-logging:line": {
+      "choice": "none",
+      "probabilities": {
+        "none": 0.9
+      },
+      "confidence": 0.9
+    }
+  },
+  "outOfRange": {
+    "check:no-secret-logging": {
+      "noul": 0.97
+    },
+    "check:no-secret-logging:line": {
+      "choice": "L009",
+      "probabilities": {
+        "L009": 0.9
+      },
+      "confidence": 0.9
+    }
+  },
+  "select": {
+    "name-matches-body:main": {
+      "noul": 0.99
+    },
+    "name-matches-body:verb": {
+      "choice": "other",
+      "probabilities": {
+        "other": 0.9
+      },
+      "confidence": 0.9
+    }
+  },
+  "hiddenWrite": {
+    "comment-matches-code:contradicts": {
+      "noul": 0.1
+    },
+    "comment-matches-code:hides": {
+      "noul": 0.91
+    }
+  }
 }

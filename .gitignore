@@ -5,3 +5,4 @@ coverage
 node_modules/.cache
 bench/.cache
 bench/results/*.json
+bench/.local

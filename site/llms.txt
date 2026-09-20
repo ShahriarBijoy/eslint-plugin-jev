@@ -10,9 +10,10 @@
 ## Rules
 
 - [jev/name-matches-body](https://github.com/ShahriarBijoy/eslint-plugin-jev/blob/main/docs/rules/name-matches-body.md): does the name promise a different action, object, or result than the body performs?
-- [jev/comment-matches-code](https://github.com/ShahriarBijoy/eslint-plugin-jev/blob/main/docs/rules/comment-matches-code.md): does the leading comment describe behavior the body does not have, or hide a side effect it does?
+- [jev/comment-matches-code](https://github.com/ShahriarBijoy/eslint-plugin-jev/blob/main/docs/rules/comment-matches-code.md): does the leading comment contradict what the function does, or hide a side effect it has?
 - [jev/helpful-error-message](https://github.com/ShahriarBijoy/eslint-plugin-jev/blob/main/docs/rules/helpful-error-message.md): would a developer reading this thrown message in a log be unable to tell what went wrong?
 - [jev/check](https://github.com/ShahriarBijoy/eslint-plugin-jev/blob/main/docs/rules/check.md): ask your own question, one sentence, of every function.
+- [jev/too-large](https://github.com/ShahriarBijoy/eslint-plugin-jev/blob/main/docs/rules/too-large.md): a notice, not a judgment — this function was too big to send, so nothing checked it.
 
 ## TypeSafe
 

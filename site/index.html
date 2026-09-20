@@ -253,9 +253,11 @@ export default defineConfig([
       </article>
       <article class="card rule-card">
         <h3><code>jev/comment-matches-code</code></h3>
-        <p class="question">&ldquo;Does <code>function.comment</code> describe behavior that
-          <code>function.body</code> does not have, or leave out a side effect that
-          <code>function.body</code> has?&rdquo;</p>
+        <p class="question">&ldquo;Does <code>function.comment</code> state something about this
+          function that <code>function.body</code> contradicts?&rdquo; &mdash; and separately,
+          &ldquo;does <code>function.body</code> perform a side effect that
+          <code>function.comment</code> never mentions?&rdquo; Two defects, two messages. Behaviour
+          carried out by a helper the body calls still counts as the function&rsquo;s own.</p>
         <p class="rule-foot"><span class="pill">threshold 0.80</span>
           <a href="https://github.com/ShahriarBijoy/eslint-plugin-jev/blob/main/docs/rules/comment-matches-code.md">Rule docs</a></p>
       </article>
@@ -274,6 +276,15 @@ export default defineConfig([
           it off, asks a second question to locate the offending line.</p>
         <p class="rule-foot"><span class="pill">threshold 0.80</span>
           <a href="https://github.com/ShahriarBijoy/eslint-plugin-jev/blob/main/docs/rules/check.md">Rule docs</a></p>
+      </article>
+      <article class="card rule-card">
+        <h3><code>jev/too-large</code></h3>
+        <p class="question">Not a question. A function over
+          <code>maxFunctionTokens</code> is never sent, and silence would read as a clean bill of
+          health &mdash; so the one function nothing checked says so itself. Asks nothing, costs
+          nothing.</p>
+        <p class="rule-foot"><span class="pill">no threshold</span>
+          <a href="https://github.com/ShahriarBijoy/eslint-plugin-jev/blob/main/docs/rules/too-large.md">Rule docs</a></p>
       </article>
     </div>
     <p class="aside">Phrase your own question so that <strong>yes means the code is bad</strong>.

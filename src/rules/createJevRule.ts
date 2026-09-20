@@ -48,7 +48,7 @@ export function createJevRule<O>(spec: JevRuleSpec<O>): Rule.RuleModule {
       schema: spec.schema as Rule.RuleMetaData["schema"],
       defaultOptions: spec.defaultOptions,
       ...(spec.hasSuggestions ? { hasSuggestions: true } : {}),
-      messages: { ...spec.messages, unavailable: "eslint-plugin-jev: {{message}}", skippedTooLarge: "eslint-plugin-jev: `{{name}}` skipped, about {{tokens}} tokens exceeds settings.jev.maxFunctionTokens." },
+      messages: { ...spec.messages, unavailable: "eslint-plugin-jev: {{message}}" },
     },
     create(context) {
       // meta.defaultOptions merging only exists from ESLint 9.15; the peer range allows 9.0, so
@@ -83,10 +83,8 @@ export function createJevRule<O>(spec: JevRuleSpec<O>): Rule.RuleModule {
             const res = session.result();
             const fatal = res.errors.find((e) => !e.unitId);
             if (fatal) reportTransportFatal(context, session, fatal.message);
-            if (!session.skippedReported) {
-              session.skippedReported = true;
-              for (const s of session.skipped) context.report({ loc: s.loc, messageId: "skippedTooLarge", data: { name: s.name, tokens: String(s.estimatedTokens) } });
-            }
+            // Oversized functions are reported by `jev/too-large`, which owns that message. Doing it
+            // here meant the notice inherited the rule id of whichever jev rule ran first.
             for (const unit of selected) {
               if (res.errors.some((e) => e.unitId === unit.id)) continue;
               spec.report({ context, unit, options, settings: session.settings, answer: (qid) => session!.answer(spec.name, unit.id, qid) });

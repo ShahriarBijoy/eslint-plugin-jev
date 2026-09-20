@@ -14,6 +14,7 @@ tester.run("name-matches-body", rule, {
     { code: "function maybeBad() { return 1; }" },                       // 0.7 below default threshold
     { code: "function useThing() { db.users.delete(); }" },              // ignored by default ignoreNames
     { code: "function maybeBad() { return 1; }", options: [{ threshold: 0.75 }] },
+    { code: "const crumb = { select: () => db.users.delete() };" },   // object-literal key: named by the consuming interface
   ],
   invalid: [
     {

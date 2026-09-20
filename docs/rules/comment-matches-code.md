@@ -1,35 +1,56 @@
 # `jev/comment-matches-code`
 
-Flags a comment above a function that describes behavior the function does not have, or that stays
-silent about a side effect it does have.
+Flags a comment above a function that misleads a reader about what the function does — either
+because the body contradicts it, or because the body has a side effect the comment never mentions.
 
 In `jev.configs.recommended` at `warn`. Reports at the comment, not at the function.
 
 ## What it asks
 
-Only functions that actually have a comment block immediately above them are asked about — line
-comments, block comments and JSDoc all count, and consecutive ones are joined. A "yes" means the
-comment is misleading, so the probability in the message is the probability that the comment lies.
+Only functions with a comment **touching** the declaration are asked about — line comments, block
+comments and JSDoc all count. A comment separated from the function by a blank line is a module or
+section header and is not read as that function's documentation. When several comments precede a
+declaration, the nearest one wins rather than all of them being concatenated.
 
-> **Instructions:** Does `function.comment` describe behavior that `function.body` does not have,
-> or leave out a side effect that `function.body` has?
+Two questions are asked, because these are two different defects that deserve two different
+sentences. Whichever scores higher above the threshold is the one reported.
+
+> **`contradicts`:** Does `function.comment` state something about this function that
+> `function.body` contradicts?
 >
-> **Yes:** The comment states a behavior, return value, or guarantee the code does not implement,
-> or the code performs a write, network call, deletion, or mutation the comment does not mention.
-> Examples: the comment says returns the profile and the body deletes; the comment says pure and
-> the body writes a file.
+> **Yes:** The comment states a behavior, return value, ordering, count, or guarantee, and the body
+> does something different — including a comment that documents some *other* function rather than
+> this one. Examples: the comment says returns the profile and the body deletes the user; the
+> comment says newest first and the body sorts alphabetically; the comment says three options and
+> the body offers two.
 >
-> **No:** The comment is accurate for what the body does, or is merely brief, vague, or incomplete
-> about minor details. Examples: the comment says saves an order and the body validates then saves.
+> **No:** The comment is accurate for this function once you credit work the body hands off:
+> behavior inside a helper this body calls, a hook it invokes, or a constant it references counts
+> as this function's behavior.
+
+> **`hides`:** Does `function.body` perform a write, network call, deletion, or other lasting side
+> effect that `function.comment` does not mention at all?
+>
+> **Yes:** The body changes state outside itself and the comment gives no hint of it. Example: the
+> comment describes resolving a caller's access level and the body also marks that account active
+> in the database.
+>
+> **No:** The comment mentions the effect, or there is no such effect. Logging, metrics, caching
+> and memoization are not hidden side effects.
 
 Note the asymmetry: a *thin* comment is fine, a *wrong* comment is not. "Saves an order" is an
 acceptable comment for a function that validates and then saves. "Returns the profile" is not an
 acceptable comment for a function that deletes.
 
+**Delegation is not a contradiction.** A one-line body that calls a helper does not literally
+contain the behavior its comment describes, and an earlier version of this rule flagged every such
+function. A comment is judged against what the function *accomplishes*, not against what its own
+statements spell out.
+
 ## Bad
 
 ```ts
-// 3:1  Comment on "getUser" describes behavior the code does not have (P=0.98, threshold 0.80)
+// 3:1  Comment on "getUser" contradicts what the code does (P=0.98, threshold 0.80)
 
 // Returns the user's profile
 export async function getUser(id: string) {
@@ -96,13 +117,20 @@ they are not read as a description of it.
 often promises the general contract while this particular implementation is a stub or a no-op. The
 warning is arguably correct; if you disable it, disable it on the line.
 
-**Commented-out code above the function.** Every comment between the previous statement and the
-function is joined into one block and treated as its comment, blank lines included. A chunk of
-dead code sitting there rarely matches the body, so it tends to fire. Delete it — that is what
-version control is for.
+**Commented-out code directly above the function.** Dead code touching the declaration is read as
+its comment and rarely matches the body, so it tends to fire. Delete it — that is what version
+control is for. Dead code separated by a blank line is no longer picked up.
 
 **Adversarial comments.** A comment that argues for itself ("this really does return the profile")
 can pull the answer down. This rule judges; it does not verify.
+
+## Known misses
+
+The rule is deliberately conservative about delegation, and the cost is that *subtle* contradictions
+land below the default threshold. On a hand-labelled set of 19 real warnings, a docblock that had
+drifted one function up scored 0.64, and a comment whose stated row count disagreed with a `where`
+clause scored 0.58 — both real, both silent at `0.8`. If you are auditing a codebase rather than
+watching it as you type, run once at `{ threshold: 0.6 }` and read the extra hits yourself.
 
 To silence one case:
 
