@@ -15,7 +15,11 @@ export default createJevRule<Options>({
     mismatchNoVerb: "Name \"{{name}}\" does not match what the body does (P={{p}}, threshold {{threshold}}).",
     rename: "Rename to `{{name}}`",
   },
-  select: (unit, _o, settings) => unit.name !== "default" && !settings.ignoreNames.some((re) => new RegExp(re).test(unit.name.split(".").pop()!)),
+  // `kind === "property"` is excluded for the same reason as the default `ignoreNames`: an
+  // object-literal key is chosen by the interface that consumes the object, so it is not a promise
+  // the author of the body made. Class methods are still judged.
+  select: (unit, _o, settings) => unit.name !== "default" && unit.kind !== "property"
+    && !settings.ignoreNames.some((re) => new RegExp(re).test(unit.name.split(".").pop()!)),
   questions: () => nameMatchesBodyQuestions(),
   report({ context, unit, options, answer }) {
     const main = answer("main")?.noul;

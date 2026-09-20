@@ -17,7 +17,7 @@ describe("eslint-plugin-jev end to end", () => {
     expect(result.messages.every((m) => m.severity === 1)).toBe(true);
     expect(result.messages.find((m) => m.ruleId === "jev/name-matches-body")?.message).toContain("P=0.94");
   });
-  it("exposes all four rules", () => {
-    expect(Object.keys(plugin.rules).sort()).toEqual(["check", "comment-matches-code", "helpful-error-message", "name-matches-body"]);
+  it("exposes all five rules", () => {
+    expect(Object.keys(plugin.rules).sort()).toEqual(["check", "comment-matches-code", "helpful-error-message", "name-matches-body", "too-large"]);
   });
 });

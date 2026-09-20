@@ -73,7 +73,7 @@ Prettier says nothing. ESLint's own rules say nothing. Here is `npx eslint src/`
 
 ```
 src/users.ts
-   3:1   warning  Comment on "getUser" describes behavior the code does not have (P=0.98, threshold 0.80)  jev/comment-matches-code
+   3:1   warning  Comment on "getUser" contradicts what the code does (P=0.98, threshold 0.80)              jev/comment-matches-code
    4:23  warning  Name says "getUser" but the body mostly does "delete" (P=0.98, threshold 0.80)           jev/name-matches-body
   13:44  warning  Error message "Error 42" gives the reader nothing to act on (P=0.95, threshold 0.85)     jev/helpful-error-message
 
@@ -93,15 +93,19 @@ file above as soon as you drop in your own key.
 | Rule | What it asks | Default threshold | Docs |
 | --- | --- | --- | --- |
 | `jev/name-matches-body` | Does the name promise a different action, object, or result than the body performs? | 0.80 | [docs](docs/rules/name-matches-body.md) |
-| `jev/comment-matches-code` | Does the leading comment describe behavior the body does not have, or hide a side effect it does? | 0.80 | [docs](docs/rules/comment-matches-code.md) |
+| `jev/comment-matches-code` | Does the leading comment contradict what the function does, or hide a side effect it has? | 0.80 | [docs](docs/rules/comment-matches-code.md) |
 | `jev/helpful-error-message` | Would a developer reading this thrown message in a log be unable to tell what went wrong? | 0.85 | [docs](docs/rules/helpful-error-message.md) |
 | `jev/check` | Your own question, one sentence, asked of every function. | 0.80 | [docs](docs/rules/check.md) |
+| `jev/too-large` | Notice, not a judgment: this function was too big to send. Asks nothing, costs nothing. | — | [docs](docs/rules/too-large.md) |
 
 The threshold is the probability at which a rule speaks up. Raise it to hear less, lower it to hear
 more. Every message prints both the probability and the threshold so you can tune from real output.
 
-`jev.configs.recommended` turns the first three on at `warn`. Promote them to `error` once you have
-seen how they behave on your code:
+`jev.configs.recommended` turns the first three on at `warn`, adds `jev/too-large`, and switches
+`jev/helpful-error-message` off under `**/*.test.*`, `**/*.spec.*`, `**/__tests__/**` and
+`**/__mocks__/**` — a throw inside a test is a guard for whoever is reading the failure, with the
+case name already on screen, and "create failed" is a fine message there. The judgment rules stay on
+in test files. Promote any of them to `error` once you have seen how they behave on your code:
 
 ```js
 rules: {
@@ -153,23 +157,32 @@ Phrase the question so that **yes means the code is bad**. That is the only word
 Thresholds here are not guesses in a prompt, they are numbers you can re-measure. `bench/` holds
 hand-labeled functions and a script that reports precision and recall per rule at each threshold.
 
-Current numbers, model `jev-1.13.0`, from a **10-case seed set** for `name-matches-body`
-(5 functions a human says should be flagged, 5 that should not):
+Current numbers, model `jev-1.13.0`, at the default thresholds:
 
-| Threshold | Precision | Recall | Flagged |
+| Rule | Cases | Precision | Recall |
 | --- | --- | --- | --- |
-| 0.60 | 1.00 | 1.00 | 5 |
-| 0.70 | 1.00 | 1.00 | 5 |
-| **0.80** (default) | **1.00** | **0.80** | 4 |
-| 0.85 | 1.00 | 0.80 | 4 |
-| 0.90 | 1.00 | 0.80 | 4 |
-| 0.95 | 1.00 | 0.80 | 4 |
+| `jev/name-matches-body` | 10 | 1.00 | 1.00 |
+| `jev/comment-matches-code` | 16 | 1.00 | 0.75 |
 
-Ten cases, 4,766 input tokens, $0.0002 for the whole run. Read that honestly: it says nothing has
-gone obviously wrong, not that precision is 1.00 on your codebase. `comment-matches-code` and
-`helpful-error-message` have no label files yet, and the 50-case sets are still being labeled. The
-full report is in [`bench/results/latest.md`](bench/results/latest.md); the method is in
-[`bench/`](bench).
+Twenty-six cases, 16,563 input tokens, $0.0007 for the whole run. Read that honestly: it says nothing
+has gone obviously wrong on a small labelled set, not that precision is 1.00 on your codebase.
+`helpful-error-message` has no label file yet. The full report is in
+[`bench/results/latest.md`](bench/results/latest.md); the method is in [`bench/`](bench).
+
+### Where it was wrong on a real codebase
+
+The seed sets are the floor, not the ceiling. Run against a 2,000-function private monorepo,
+`comment-matches-code` produced 22 warnings of which a human confirmed 6 — precision **0.37**. Almost
+every miss was one defect: the rule asked whether the body contained the behavior the comment
+described, so a one-line function that delegates to a helper was a textbook "yes". Rewriting the
+question around *contradiction* rather than absence, and attaching comments only when they touch the
+declaration, took that set to **0.60** with false positives down from 12 to 2.
+
+The cost was recall. Subtle contradictions — a branch count that disagrees with its docblock, a
+`where` clause that excludes rows the comment still counts — now land between 0.23 and 0.67 and stay
+silent at the default. That weakness reproduces on the public seed set above (`seed:contradict-refuses`
+at 0.39, `seed:contradict-branch-count` at 0.23), so it is a property of the rule, not of one repo.
+If you are auditing rather than typing, run once at `{ threshold: 0.6 }` and read the extra hits.
 
 Speed, from a live run on a 3-function file: **934 ms cold and 13 ms on the rerun in the run
 recorded for the demo**, because every answer is cached on disk by content hash. Only functions you

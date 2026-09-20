@@ -1,7 +1,7 @@
 {
-  "recordedAt": "2026-09-19T18:21:03.821Z",
+  "recordedAt": "2026-09-20T17:46:47.586Z",
   "model": "jev-1.13.0",
-  "pluginVersion": "0.0.0",
+  "pluginVersion": "0.2.0",
   "examples": [
     {
       "id": "users",
@@ -10,8 +10,8 @@
       "variants": {
         "bad": {
           "code": "import { db, repo, type Order } from \"./db.js\";\n\n// Returns the user's profile\nexport async function getUser(id: string) {\n  await db.users.delete({ id });\n}\n\nexport function listUsers() {\n  return db.users.findMany();\n}\n\nexport function saveOrder(order: Order) {\n  if (!order.items.length) throw new Error(\"Error 42\");\n  return repo.insert(order);\n}\n",
-          "coldMs": 934,
-          "warmMs": 13,
+          "coldMs": 873,
+          "warmMs": 15,
           "messages": [
             {
               "line": 3,
@@ -20,7 +20,7 @@
               "endColumn": 30,
               "ruleId": "jev/comment-matches-code",
               "severity": 1,
-              "message": "Comment on \"getUser\" describes behavior the code does not have (P=0.98, threshold 0.80)."
+              "message": "Comment on \"getUser\" contradicts what the code does (P=0.98, threshold 0.80)."
             },
             {
               "line": 4,
@@ -52,7 +52,7 @@
         },
         "fixed": {
           "code": "import { db, repo, type Order } from \"./db.js\";\n\n// Deletes the user\nexport async function deleteUser(id: string) {\n  await db.users.delete({ id });\n}\n\nexport function listUsers() {\n  return db.users.findMany();\n}\n\nexport function saveOrder(order: Order) {\n  if (!order.items.length) throw new Error(\"Order has no items\");\n  return repo.insert(order);\n}\n",
-          "coldMs": 301,
+          "coldMs": 390,
           "warmMs": 14,
           "messages": []
         }
@@ -65,8 +65,8 @@
       "variants": {
         "bad": {
           "code": "import type { Order } from \"./db.js\";\n\n/** Returns the total price of the order. */\nexport function orderTotal(order: Order) {\n  order.items = [];\n  return 0;\n}\n\nexport function validateOrder(order: Order) {\n  if (!order.items.length) throw new Error(\"E_INVALID\");\n}\n",
-          "coldMs": 310,
-          "warmMs": 9,
+          "coldMs": 269,
+          "warmMs": 14,
           "messages": [
             {
               "line": 3,
@@ -75,16 +75,7 @@
               "endColumn": 45,
               "ruleId": "jev/comment-matches-code",
               "severity": 1,
-              "message": "Comment on \"orderTotal\" describes behavior the code does not have (P=0.93, threshold 0.80)."
-            },
-            {
-              "line": 4,
-              "column": 17,
-              "endLine": 4,
-              "endColumn": 27,
-              "ruleId": "jev/name-matches-body",
-              "severity": 1,
-              "message": "Name \"orderTotal\" does not match what the body does (P=0.81, threshold 0.80)."
+              "message": "Comment on \"orderTotal\" does not mention a side effect the code has (P=0.91, threshold 0.80)."
             },
             {
               "line": 10,
@@ -99,8 +90,8 @@
         },
         "fixed": {
           "code": "import type { Order } from \"./db.js\";\n\n/** Clears the order's items and resets its total to zero. */\nexport function clearOrder(order: Order) {\n  order.items = [];\n  return 0;\n}\n\nexport function validateOrder(order: Order) {\n  if (!order.items.length) throw new Error(`Order ${order.id} has no items`);\n}\n",
-          "coldMs": 314,
-          "warmMs": 12,
+          "coldMs": 372,
+          "warmMs": 14,
           "messages": []
         }
       }
@@ -118,8 +109,8 @@
       "variants": {
         "bad": {
           "code": "interface Req { headers: Record<string, string>; url: string }\ndeclare function next(req: Req): unknown;\n\nexport function logRequest(req: Req) {\n  const key = req.headers.authorization;\n  console.log(\"auth\", key);\n  return next(req);\n}\n",
-          "coldMs": 295,
-          "warmMs": 10,
+          "coldMs": 262,
+          "warmMs": 13,
           "messages": [
             {
               "line": 6,
@@ -134,8 +125,8 @@
         },
         "fixed": {
           "code": "interface Req { headers: Record<string, string>; url: string }\ndeclare function next(req: Req): unknown;\n\nexport function logRequest(req: Req) {\n  console.log(\"request\", req.url);\n  return next(req);\n}\n",
-          "coldMs": 269,
-          "warmMs": 11,
+          "coldMs": 256,
+          "warmMs": 14,
           "messages": []
         }
       }

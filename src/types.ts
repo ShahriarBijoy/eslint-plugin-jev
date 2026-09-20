@@ -6,7 +6,7 @@ export interface ThrowSite { id: string; message: string; line: number; loc: Loc
 export interface FunctionUnit {
   id: string;                   // "f0", "f1", ... stable within a file
   name: string;                 // "getUser", "UserService.save", "default"
-  kind: "declaration" | "expression" | "arrow" | "method";
+  kind: "declaration" | "expression" | "arrow" | "method" | "property";
   nameLoc: Loc;                 // where name-level diagnostics go
   commentLoc?: Loc;             // leading comment block, if any
   bodyStartLine: number;        // 1-based file line of the first tagged body line

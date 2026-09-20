@@ -12,6 +12,9 @@ tester.run("comment-matches-code", rule, {
   ],
   invalid: [
     { code: "// Returns the cached profile\nfunction staleComment() { db.delete(); }",
-      errors: [{ messageId: "stale", data: { name: "staleComment", p: "0.88", threshold: "0.80" }, line: 1, column: 1 }] },
+      errors: [{ messageId: "contradicts", data: { name: "staleComment", p: "0.88", threshold: "0.80" }, line: 1, column: 1 }] },
+    // the body writes something the comment never mentions: a different defect, so a different sentence
+    { code: "// Resolves the caller's access level\nfunction hiddenWrite() { markActive(); return level; }",
+      errors: [{ messageId: "hides", data: { name: "hiddenWrite", p: "0.91", threshold: "0.80" }, line: 1, column: 1 }] },
   ],
 });

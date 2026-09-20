@@ -54,7 +54,10 @@ function nameFor(node: ESTree.Node, parent: ESTree.Node | null): Named | null {
       return { node, name: className ? `${className}.${parent.key.name}` : parent.key.name, kind: "method", nameNode: parent.key, commentAnchor: parent };
     }
     if (parent?.type === "Property" && parent.key.type === "Identifier" && parent.value === node) {
-      return { node, name: parent.key.name, kind: node.type === "ArrowFunctionExpression" ? "arrow" : "expression", nameNode: parent.key, commentAnchor: parent };
+      // An object-literal key is chosen by whatever interface consumes the object, not by the author
+      // of the body: `select` on a breadcrumb means "was selected", so navigating is the right body.
+      // Name rules treat this kind as not-a-promise, the same reason `onX`/`handleX` are ignored.
+      return { node, name: parent.key.name, kind: "property", nameNode: parent.key, commentAnchor: parent };
     }
     if (parent?.type === "ExportDefaultDeclaration") {
       return { node, name: node.type === "FunctionExpression" && node.id ? node.id.name : "default", kind: "expression", nameNode: node, commentAnchor: parent };
@@ -71,7 +74,7 @@ function toUnit(sourceCode: SourceCode, n: Named, id: string): FunctionUnit {
   const bodyStartLine = body.type === "BlockStatement" ? body.loc!.start.line + (sourceCode.getText(body as unknown as AST.Program).match(/^\{\s*\n/) ? 1 : 0) : body.loc!.start.line;
   const full = sourceCode.getText(n.node as unknown as AST.Program);
   const signature = full.slice(0, full.indexOf(sourceCode.getText(body as unknown as AST.Program))).trim().replace(/\s+/g, " ");
-  const comments = sourceCode.getCommentsBefore(n.commentAnchor as unknown as ESTree.Node);
+  const comments = attachedComments(sourceCode, n.commentAnchor);
   const commentText = comments.length ? comments.map((c) => c.value).join("\n") : undefined;
   const comment = commentText ? cleanComment(commentText) : undefined;
   const commentLoc = comments.length ? { start: comments[0].loc!.start, end: comments[comments.length - 1].loc!.end } : undefined;
@@ -85,6 +88,28 @@ function toUnit(sourceCode: SourceCode, n: Named, id: string): FunctionUnit {
   };
   unit.estimatedTokens = estimateTokens(unit.signature + (unit.comment ?? "") + unit.body);
   return unit;
+}
+
+/** The comments that belong to this declaration, nearest first-class one wins.
+ *
+ * `getCommentsBefore` returns every comment between the previous token and the declaration, so a
+ * module header followed by a blank line was being read as the function's own docblock — and when
+ * both a header and a real docblock were present, the two were concatenated into one comment that
+ * described neither. A comment only documents a declaration it actually touches. */
+function attachedComments(sourceCode: SourceCode, anchor: ESTree.Node): ESTree.Comment[] {
+  const all = sourceCode.getCommentsBefore(anchor as unknown as ESTree.Node) as unknown as ESTree.Comment[];
+  if (!all.length) return [];
+  const last = all[all.length - 1];
+  if (anchor.loc!.start.line - last.loc!.end.line > 1) return [];
+  if (last.type === "Block") return [last];
+  // A run of `//` lines is one comment; walk back while they stay contiguous.
+  const run = [last];
+  for (let i = all.length - 2; i >= 0; i--) {
+    const prev = all[i];
+    if (prev.type !== "Line" || run[0].loc!.start.line - prev.loc!.end.line > 1) break;
+    run.unshift(prev);
+  }
+  return run;
 }
 
 function cleanComment(text: string): string {
