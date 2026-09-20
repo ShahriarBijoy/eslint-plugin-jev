@@ -39,6 +39,7 @@ jobs:
       # Opens or updates a "Version Packages" PR while changesets are pending;
       # publishes to npm when that PR is merged.
       - uses: changesets/action@v1
+        id: changesets
         with:
           publish: pnpm release
         env:
@@ -52,9 +53,15 @@ jobs:
       # 0.2.0 published with no tag and no release. Do it here instead. This is idempotent:
       # it exits quietly when the release already exists, and it never invents a release
       # for a version that is not actually on npm.
+      #
+      # It also must not report success for a release it skipped. 0.3.0 reached npm three
+      # seconds after this step stopped waiting, so the job went green while the repo kept
+      # showing 0.2.0 as the latest release. Hence the action's own `published` output as
+      # the primary signal, a five-minute registry fallback, and annotations on every exit.
       - name: Tag and release the published version
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CHANGESETS_PUBLISHED: ${{ steps.changesets.outputs.published }}
         run: |
           set -euo pipefail
           name=$(node -p "require('./package.json').name")
@@ -63,17 +70,33 @@ jobs:
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "release $tag already exists"; exit 0
           fi
-          # A just-published version can take a few seconds to appear, so retry before
-          # concluding that this run did not publish anything.
-          published=""
-          for _ in 1 2 3 4 5; do
-            if npm view "$tag" version >/dev/null 2>&1; then published=yes; break; fi
-            sleep 10
-          done
-          if [ -z "$published" ]; then
-            echo "$tag is not on npm; nothing to release"; exit 0
+          # Prefer the action's own answer: if it says it published, that is first-hand and
+          # needs no confirmation from the registry.
+          published="${CHANGESETS_PUBLISHED:-}"
+          if [ "$published" != "true" ]; then
+            # Otherwise poll. 0.3.0 published at 17:55:38 and the old 5x10s loop gave up at
+            # 17:55:35 — three seconds short — so the run went green having released nothing.
+            # Registry reads lag a publish by up to a minute; --prefer-online defeats npm's
+            # own metadata cache, which otherwise keeps serving the pre-publish document.
+            for attempt in $(seq 1 20); do
+              if npm view "$tag" version --prefer-online >/dev/null 2>&1; then published=true; break; fi
+              echo "attempt $attempt/20: $tag not visible on npm yet"
+              sleep 15
+            done
+          fi
+          if [ "$published" != "true" ]; then
+            # Not a failure: a push to main with no pending changeset publishes nothing. Use a
+            # notice so the reason is on the run summary instead of buried in the log.
+            echo "::notice::$tag is not on npm after 5 minutes; nothing to release"
+            exit 0
           fi
           awk -v v="$version" '$0 ~ "^## " v "$" { inside=1; next } inside && /^## / { exit } inside { print }' CHANGELOG.md > "$RUNNER_TEMP/notes.md"
+          # A tag can outlive a failed release attempt, so do not assume this one is new.
+          if [ -n "$(git ls-remote --tags origin "refs/tags/$tag")" ]; then
+            echo "::warning::tag $tag already exists; creating the release from the existing tag"
+            gh release create "$tag" --title "$tag" --notes-file "$RUNNER_TEMP/notes.md" --latest
+            exit 0
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$tag" -m "$tag"
